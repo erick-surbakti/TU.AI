@@ -16,6 +16,7 @@ const ProductionDataSchema = z.object({
   livestockType: z.string().optional(),
   livestockCount: z.number().optional(),
   feedUsage: z.string().optional(),
+  mortalityRate: z.string().optional(),
 });
 
 const FarmSetupInputSchema = z.object({
@@ -27,18 +28,29 @@ const FarmSetupInputSchema = z.object({
     region: z.string(),
     address: z.string(),
   }),
-  farmType: z.string().describe('Major plant or livestock type.'),
-  sizeValue: z.number(),
-  sizeUnit: z.string(),
-  problems: z.array(z.string()).describe('Selected pain points.'),
+  // Fields for Existing
+  farmType: z.string().optional(),
+  sizeValue: z.number().optional(),
+  sizeUnit: z.string().optional(),
+  hasLivestock: z.boolean().optional(),
+  livestockDetails: z.string().optional(),
+  techInterest: z.boolean().optional(),
+  problems: z.array(z.string()).optional(),
   operations: z.object({
     trackingMethod: z.string(),
     useSensors: z.boolean(),
     useMachinery: z.boolean(),
-  }),
-  productionData: ProductionDataSchema,
+  }).optional(),
+  productionData: ProductionDataSchema.optional(),
+  
+  // Fields for Beginners
+  targetCrop: z.string().optional(),
+  hasLand: z.boolean().optional(),
+  budget: z.string().describe('Capital/Modal readiness.'),
+  motivation: z.string().optional(),
+  
+  // Shared
   goals: z.array(z.string()),
-  budget: z.string(),
   helpType: z.string(),
 });
 
@@ -54,13 +66,18 @@ const FarmSetupOutputSchema = z.object({
   }).optional(),
   recommendations: z.array(z.string()).describe('Actionable items.'),
   roadmap: z.array(z.string()).describe('Step-by-step path.'),
-  motivation: z.string().describe('Inspirational AI reasoning.'),
+  motivationAI: z.string().describe('Inspirational AI reasoning.'),
   landOptions: z.array(z.object({
     location: z.string(),
     size: z.string(),
     priceEstimate: z.string(),
     suitabilityReason: z.string(),
   })).optional(),
+  financialEstimate: z.object({
+    initialCapital: z.string(),
+    operatingExpense: z.string(),
+    expectedRoiTime: z.string(),
+  }).optional(),
 });
 
 export type FarmSetupOutput = z.infer<typeof FarmSetupOutputSchema>;
@@ -75,26 +92,40 @@ const farmSetupPrompt = ai.definePrompt({
   output: { schema: FarmSetupOutputSchema },
   prompt: `You are a professional agricultural consultant for ASEAN. Analyze this farm profile and provide a deep intelligence report.
 
-  User Status: {{{status}}}
+  USER STATUS: {{{status}}}
+  
+  {{#if (eq status "existing")}}
+  ### EXISTING FARM AUDIT
   Farm Name: {{{basicInfo.farmName}}}
   Region: {{{basicInfo.region}}}, {{{basicInfo.country}}}
   Farm Type: {{{farmType}}}
   Size: {{{sizeValue}}} {{{sizeUnit}}}
+  Livestock: {{#if hasLivestock}}{{{livestockDetails}}}{{else}}None{{/if}}
+  Tech Interest: {{#if techInterest}}High (Interested in Robots/AI){{else}}Low{{/if}}
   Current Problems: {{#each problems}}- {{{this}}} {{/each}}
-  Goals: {{#each goals}}- {{{this}}} {{/each}}
-  Budget Segment: {{{budget}}}
-
-  If user is EXISTING:
+  Production Stats: Yield: {{{productionData.averageYield}}}, Feed: {{{productionData.feedUsage}}}
+  
+  Tasks:
   1. Generate a "Farm Health Report" with scores based on their operational data.
-  2. Provide 3-5 specific recommendations to solve their "Current Problems" and meet their "Goals".
-  3. Suggest localized technology or robot integration if they are interested in "Improve automation".
+  2. Provide 3-5 specific recommendations to solve their "Current Problems" (especially yield and cost).
+  3. Suggest specific localized robotics or AI tools (like TUAI Scanners) if they are tech-interested.
+  {{/if}}
 
-  If user is BEGINNER:
-  1. Provide a step-by-step roadmap from 0 to hero in {{{basicInfo.region}}}.
-  2. Suggest 3 specific sub-regions for land purchase if they don't have land.
-  3. Provide estimated seed/material costs based on their crop interest.
+  {{#if (eq status "beginner")}}
+  ### BEGINNER ROADMAP
+  Interest: {{{targetCrop}}}
+  Capital (Modal): {{{budget}}}
+  Land Status: {{#if hasLand}}Owns land{{else}}Needs land scouting{{/if}}
+  Motivation: {{{motivation}}}
+  
+  Tasks:
+  1. Provide a step-by-step roadmap from 0 to first harvest in {{{basicInfo.region}}}.
+  2. If they need land, suggest 3 specific sub-regions in {{{basicInfo.region}}} for land purchase with estimated prices.
+  3. Breakdown the "Initial Capital" needed for seeds, tools, and labor based on their {{{budget}}}.
+  4. Explain why choosing {{{targetCrop}}} is a smart move for reducing national export dependency.
+  {{/if}}
 
-  Always include a "Motivation" section explaining why local farming is critical for food security and reducing national export dependency.`,
+  Always include a "MotivationAI" section explaining why local farming is critical for food security.`,
 });
 
 const farmSetupFlow = ai.defineFlow(
