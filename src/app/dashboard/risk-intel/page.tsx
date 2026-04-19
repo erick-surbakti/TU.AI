@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -5,15 +6,16 @@ import { ShieldAlert, Globe, BarChart3, Loader2, AlertTriangle, Sparkles } from 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { riskIntel, type RiskIntelOutput } from "@/ai/flows/risk-intel-flow"
+import { cn } from "@/lib/utils"
 
 const INITIAL_INTEL: RiskIntelOutput = {
   alertLevel: "Medium",
-  potentialImpactSummary: "Malaysia's agricultural sector is currently facing moderate risk due to global fuel price fluctuations and export quotas in China for urea production. Local supply chains for Padi are stable but costs are increasing.",
+  potentialImpactSummary: "Malaysia's agricultural sector is currently facing moderate risk due to global fuel price fluctuations and export quotas in China for urea production. Local supply chains for Padi are stable but costs are increasing due to maritime shipping delays.",
   recommendedActions: [
-    "Pre-order essential fertilizers for the next planting cycle.",
-    "Adopt soil moisture sensors to reduce irrigation costs.",
-    "Diversify short-term crops to maintain cash flow.",
-    "Monitor federal policy updates on fuel subsidies."
+    "Pre-order essential fertilizers for the next planting cycle to hedge against price hikes.",
+    "Adopt soil moisture sensors to reduce irrigation costs by 15%.",
+    "Diversify short-term crops to maintain cash flow during Padi off-seasons.",
+    "Monitor federal policy updates on fuel and fertilizer subsidies regularly."
   ]
 }
 
@@ -83,19 +85,19 @@ export default function RiskIntelPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="bg-white p-8 pt-4 space-y-8">
-            <div className="p-6 rounded-2xl bg-[#F0F4F6] border-l-4 border-l-primary space-y-3">
-              <h4 className="font-bold flex items-center gap-2 text-primary">
-                <ShieldAlert className="h-5 w-5" />
+            <div className="p-6 rounded-2xl bg-slate-50 border-l-4 border-l-primary space-y-3">
+              <h4 className="font-bold flex items-center gap-2 text-primary text-sm uppercase tracking-wider">
+                <ShieldAlert className="h-4 w-4" />
                 Impact Summary
               </h4>
-              <p className="text-muted-foreground leading-relaxed font-medium">{intel.potentialImpactSummary}</p>
+              <p className="text-slate-600 leading-relaxed font-medium">{intel.potentialImpactSummary}</p>
             </div>
 
             <div className="space-y-4">
               <h4 className="font-headline font-bold text-lg">Preventative Actions for Farmers</h4>
               <div className="grid md:grid-cols-2 gap-4">
                 {intel.recommendedActions.map((action, i) => (
-                  <div key={i} className="flex gap-3 p-4 rounded-xl bg-white border hover:border-primary transition-colors shadow-sm">
+                  <div key={i} className="flex gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-primary transition-all shadow-sm hover:shadow-md">
                     <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-xs">
                       {i + 1}
                     </div>
@@ -105,9 +107,12 @@ export default function RiskIntelPage() {
               </div>
             </div>
           </CardContent>
-          <div className="bg-slate-50 p-6 flex items-center justify-between border-t">
-             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Verified TUAI Intelligence</span>
-             <Button variant="ghost" size="sm" className="rounded-xl font-bold text-primary hover:bg-primary/5" onClick={fetchIntel}>Manual Scan</Button>
+          <div className="bg-slate-50/50 p-6 flex items-center justify-between border-t text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+             <span>Verified TUAI Intelligence Engine</span>
+             <div className="flex items-center gap-1">
+               <Sparkles className="h-3 w-3 text-secondary fill-current" />
+               Live Data
+             </div>
           </div>
         </Card>
 
