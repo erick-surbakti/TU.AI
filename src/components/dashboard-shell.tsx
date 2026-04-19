@@ -12,8 +12,8 @@ import {
   LayoutDashboard,
   LogOut,
   User,
-  Menu,
-  X
+  Newspaper,
+  ChevronRight
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -41,6 +41,11 @@ const navItems = [
     title: "Scans",
     href: "/dashboard/disease-scan",
     icon: Sprout,
+  },
+  {
+    title: "News",
+    href: "/dashboard/news",
+    icon: Newspaper,
   },
   {
     title: "Risk",
@@ -147,24 +152,26 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t flex md:hidden z-50 px-2 pb-safe-area-inset-bottom shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+        {/* Mobile Bottom Navigation - Improved for Mobile App Feel */}
+        <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-xl border-t flex md:hidden z-50 px-2 pb-safe-area-inset-bottom shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.2)]">
           {navItems.map((item) => (
             <Link 
               key={item.href}
               href={item.href}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-1 transition-all",
-                pathname === item.href ? "text-primary scale-110" : "text-slate-400"
+                pathname === item.href ? "text-primary scale-105" : "text-slate-400"
               )}
             >
               <div className={cn(
-                "p-2 rounded-xl transition-colors",
-                pathname === item.href ? "bg-primary/10" : "bg-transparent"
+                "p-2 rounded-2xl transition-all duration-300",
+                pathname === item.href ? "bg-primary/10 shadow-inner" : "bg-transparent"
               )}>
-                <item.icon className="h-5 w-5" />
+                <item.icon className={cn("h-6 w-6", pathname === item.href ? "text-primary" : "text-slate-400")} />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-tighter">{item.title}</span>
+              <span className={cn("text-[9px] font-bold uppercase tracking-tighter transition-opacity", pathname === item.href ? "opacity-100" : "opacity-60")}>
+                {item.title}
+              </span>
             </Link>
           ))}
         </nav>
