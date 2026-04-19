@@ -1,43 +1,66 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for farm planning and new farmer guidance.
+ * @fileOverview A comprehensive Genkit flow for farm planning, auditing, and optimization.
  * 
- * - farmSetupGuide - Provides a roadmap for new farmers or optimizes existing ones.
- * - findLand - AI-simulated land search with pricing and suitability.
+ * - farmSetupGuide - Provides a detailed roadmap for new farmers or a deep health audit for existing ones.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
+
+const ProductionDataSchema = z.object({
+  cropType: z.string().optional(),
+  lastPlantingDate: z.string().optional(),
+  averageYield: z.string().optional(),
+  fertilizerUsage: z.string().optional(),
+  livestockType: z.string().optional(),
+  livestockCount: z.number().optional(),
+  feedUsage: z.string().optional(),
+});
 
 const FarmSetupInputSchema = z.object({
-  status: z.enum(['beginner', 'existing']).describe('Current status: new farmer or existing farm owner.'),
-  locationPreference: z.object({
-    country: z.string().describe('Target country (e.g., Malaysia, Indonesia).'),
-    region: z.string().describe('Specific state or region.'),
-  }).optional(),
-  hasLand: z.boolean().describe('Whether the user already has agricultural land.'),
-  cropInterest: z.string().describe('Type of crops the user is interested in (e.g., Padi, Durian).'),
-  budget: z.number().optional().describe('Estimated budget for setup.'),
+  status: z.enum(['beginner', 'existing']).describe('User status.'),
+  basicInfo: z.object({
+    farmName: z.string(),
+    ownerName: z.string(),
+    country: z.string(),
+    region: z.string(),
+    address: z.string(),
+  }),
+  farmType: z.string().describe('Major plant or livestock type.'),
+  sizeValue: z.number(),
+  sizeUnit: z.string(),
+  problems: z.array(z.string()).describe('Selected pain points.'),
+  operations: z.object({
+    trackingMethod: z.string(),
+    useSensors: z.boolean(),
+    useMachinery: z.boolean(),
+  }),
+  productionData: ProductionDataSchema,
+  goals: z.array(z.string()),
+  budget: z.string(),
+  helpType: z.string(),
 });
 
 export type FarmSetupInput = z.infer<typeof FarmSetupInputSchema>;
 
-const LandOptionSchema = z.object({
-  location: z.string(),
-  size: z.string(),
-  priceEstimate: z.string(),
-  suitabilityReason: z.string(),
-});
-
 const FarmSetupOutputSchema = z.object({
-  roadmap: z.array(z.string()).describe('Step-by-step guide for the user.'),
-  landOptions: z.array(LandOptionSchema).optional().describe('Recommended land locations and estimated prices if user has no land.'),
-  calculatedNeeds: z.object({
-    seeds: z.string(),
-    fertilizer: z.string(),
-    estimatedInitialCost: z.string(),
-  }).describe('Technical calculation for future needs.'),
-  motivation: z.string().describe('AI encouragement and reasoning for choosing this path to reduce export dependency.'),
+  healthReport: z.object({
+    productivityScore: z.number().describe('0-100 score.'),
+    costEfficiency: z.number().describe('0-100 score.'),
+    diseaseRisk: z.enum(['Low', 'Medium', 'High', 'Critical']),
+    waterRisk: z.enum(['Low', 'Medium', 'High']),
+    profitPotential: z.enum(['Low', 'Medium', 'High', 'Very High']),
+  }).optional(),
+  recommendations: z.array(z.string()).describe('Actionable items.'),
+  roadmap: z.array(z.string()).describe('Step-by-step path.'),
+  motivation: z.string().describe('Inspirational AI reasoning.'),
+  landOptions: z.array(z.object({
+    location: z.string(),
+    size: z.string(),
+    priceEstimate: z.string(),
+    suitabilityReason: z.string(),
+  })).optional(),
 });
 
 export type FarmSetupOutput = z.infer<typeof FarmSetupOutputSchema>;
@@ -50,24 +73,28 @@ const farmSetupPrompt = ai.definePrompt({
   name: 'farmSetupPrompt',
   input: { schema: FarmSetupInputSchema },
   output: { schema: FarmSetupOutputSchema },
-  prompt: `You are a high-level agricultural consultant and regional land expert for ASEAN. 
-  
+  prompt: `You are a professional agricultural consultant for ASEAN. Analyze this farm profile and provide a deep intelligence report.
+
   User Status: {{{status}}}
-  Target Region: {{{locationPreference.region}}}, {{{locationPreference.country}}}
-  Interest: {{{cropInterest}}}
-  Has Land: {{#if hasLand}}Yes{{else}}No{{/if}}
+  Farm Name: {{{basicInfo.farmName}}}
+  Region: {{{basicInfo.region}}}, {{{basicInfo.country}}}
+  Farm Type: {{{farmType}}}
+  Size: {{{sizeValue}}} {{{sizeUnit}}}
+  Current Problems: {{#each problems}}- {{{this}}} {{/each}}
+  Goals: {{#each goals}}- {{{this}}} {{/each}}
+  Budget Segment: {{{budget}}}
 
-  If the user is a BEGINNER (0 to hero):
-  1. Provide a step-by-step guide from zero to a successful harvest.
-  2. If they DON'T have land, use your knowledge to suggest 3 specific sub-regions in {{{locationPreference.region}}} that are suitable for {{{cropInterest}}}. Provide realistic price estimates (e.g., in MYR per hectare).
-  3. Explain WHY they should choose this path (food security, reducing export dependency).
-  4. Recommend where to get the best seeds.
+  If user is EXISTING:
+  1. Generate a "Farm Health Report" with scores based on their operational data.
+  2. Provide 3-5 specific recommendations to solve their "Current Problems" and meet their "Goals".
+  3. Suggest localized technology or robot integration if they are interested in "Improve automation".
 
-  If the user is EXISTING:
-  1. Provide a high-level calculation for their next season's needs (seeds per acre, fertilizer types, cost estimates).
-  2. Focus on maximizing yield and sustainable practices.
+  If user is BEGINNER:
+  1. Provide a step-by-step roadmap from 0 to hero in {{{basicInfo.region}}}.
+  2. Suggest 3 specific sub-regions for land purchase if they don't have land.
+  3. Provide estimated seed/material costs based on their crop interest.
 
-  Make the motivation section inspiring.`,
+  Always include a "Motivation" section explaining why local farming is critical for food security and reducing national export dependency.`,
 });
 
 const farmSetupFlow = ai.defineFlow(
