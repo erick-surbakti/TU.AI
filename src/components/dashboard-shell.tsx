@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -94,8 +93,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      {/* Sidebar now opens from the right as requested */}
-      <Sidebar side="right" collapsible="icon" className="border-l border-sidebar-border bg-sidebar">
+      <Sidebar side="left" collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
         <SidebarHeader className="h-20 flex items-center px-6">
           <Link href="/" className="flex items-center gap-2 font-headline font-bold text-2xl text-sidebar-primary">
             <div className="h-8 w-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
@@ -144,30 +142,29 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 md:px-6 border-b bg-white sticky top-0 z-30 shadow-sm">
-          {/* Logo on the left for both mobile and desktop */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Sidebar trigger on the left */}
+            <SidebarTrigger className="text-primary hover:bg-primary/5 rounded-xl h-10 w-10 border border-primary/20 shadow-sm" />
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
                 <Sprout className="h-5 w-5 text-white" />
               </div>
-              <span className="font-headline font-bold text-xl text-primary">TUAI</span>
+              <span className="font-headline font-bold text-xl text-primary hidden xs:block">TUAI</span>
             </div>
-            <div className="hidden md:block h-6 w-[1px] bg-slate-200 mx-4" />
+            <div className="hidden md:block h-6 w-[1px] bg-slate-200 mx-2" />
             <h1 className="font-headline font-bold text-base md:text-lg text-slate-800 hidden lg:block">
               {navItems.find(item => item.href === pathname)?.title || "Overview"}
             </h1>
           </div>
 
           <div className="flex items-center gap-3 md:gap-4">
-             <div className="hidden xs:flex flex-col items-end leading-none mr-2">
+             <div className="hidden sm:flex flex-col items-end leading-none mr-2">
                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Region</span>
                <span className="text-xs md:text-sm font-bold text-slate-700">Selangor, MY</span>
              </div>
              <Button variant="ghost" size="icon" className="rounded-xl bg-slate-100 text-primary h-9 w-9">
                <User className="h-4 w-4 md:h-5 md:w-5" />
              </Button>
-             {/* Sidebar trigger on the right as requested */}
-             <SidebarTrigger className="text-primary hover:bg-primary/5 rounded-xl h-10 w-10 border border-primary/20 shadow-sm" />
           </div>
         </header>
 
