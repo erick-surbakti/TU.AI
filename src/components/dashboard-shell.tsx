@@ -143,11 +143,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 md:px-6 border-b bg-white sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="text-primary hover:bg-primary/5 rounded-xl h-10 w-10 border border-primary/20 shadow-sm" />
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-                <Sprout className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-2 sm:hidden">
+              <div className="h-7 w-7 bg-primary rounded-lg flex items-center justify-center">
+                <Sprout className="h-4 w-4 text-white" />
               </div>
-              <span className="font-headline font-bold text-xl text-primary hidden xs:block">TUAI</span>
+              <span className="font-headline font-bold text-lg text-primary">TUAI</span>
             </div>
           </div>
 

@@ -1,13 +1,16 @@
-
 "use client"
 
 import * as React from "react"
-import { ShieldAlert, Globe, BarChart3, Loader2, AlertTriangle, Sparkles } from "lucide-react"
+import { ShieldAlert, Globe, BarChart3, Loader2, AlertTriangle, Sparkles, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { riskIntel, type RiskIntelOutput } from "@/ai/flows/risk-intel-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
 
 const INTEL_POOL: RiskIntelOutput[] = [
   {
@@ -32,6 +35,12 @@ const INTEL_POOL: RiskIntelOutput[] = [
 ]
 
 export default function RiskIntelPage() {
+  const { user } = useUser()
+  const db = useFirestore()
+  const userRef = useMemoFirebase(() => (db && user ? doc(db, "users", user.uid) : null), [db, user])
+  const { data: profile } = useDoc(userRef)
+  const geminiKey = profile?.geminiApiKey
+
   const [intel, setIntel] = React.useState<RiskIntelOutput>(INTEL_POOL[0])
   const [loading, setLoading] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
@@ -45,6 +54,15 @@ export default function RiskIntelPage() {
   }, [])
 
   const fetchIntel = async () => {
+    if (!geminiKey) {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Add your Gemini key in Settings to run scans."
+      })
+      return
+    }
+
     setLoading(true)
     try {
       const data = await riskIntel({
@@ -52,7 +70,8 @@ export default function RiskIntelPage() {
         newsSummary: "Global shipping delays reported in Red Sea. India maintains export ban on non-basmati rice. Crude oil prices stabilizing around $80/barrel.",
         commodityPrices: { "Fertilizer (NPK)": 820, "Diesel": 2.15, "Padi Grade A": 1.45 },
         exportImportBans: ["Indian Rice Export Ban", "China Urea Export Quotas"],
-        policyUpdates: "New federal subsidy for organic soil enhancers starting next month."
+        policyUpdates: "New federal subsidy for organic soil enhancers starting next month.",
+        apiKey: geminiKey
       })
       setIntel(data)
       toast({
@@ -80,8 +99,8 @@ export default function RiskIntelPage() {
   if (!mounted) return null
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-32">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-1">
+    <div className="max-w-6xl mx-auto space-y-8 pb-32 px-1 no-scrollbar">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
             <Globe className="h-3 w-3" />
@@ -96,11 +115,21 @@ export default function RiskIntelPage() {
           disabled={loading}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-          Run Global Risk Scan
+          Run AI Risk Scan
         </Button>
       </div>
 
-      <div className={cn("grid lg:grid-cols-3 gap-8 px-1 animate-in fade-in slide-in-from-bottom-8 duration-700", loading && "opacity-50 pointer-events-none")}>
+      {!geminiKey && (
+        <Alert variant="default" className="bg-orange-100 border-none rounded-2xl shadow-sm">
+          <AlertCircle className="h-5 w-5 text-orange-600" />
+          <AlertTitle className="text-orange-900 font-bold">Token Responsibility</AlertTitle>
+          <AlertDescription className="text-orange-800 text-xs">
+            To use live risk scanning, please add your own Gemini API key in <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className={cn("grid lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700", loading && "opacity-50 pointer-events-none")}>
         <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-xl overflow-hidden bg-white">
           <div className={cn("h-3", alertColors[intel.alertLevel as keyof typeof alertColors])} />
           <CardHeader className="bg-white p-8 pb-4">

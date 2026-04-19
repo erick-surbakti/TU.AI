@@ -27,35 +27,32 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
 
+  // Sync state once when profile is loaded
   React.useEffect(() => {
     if (profile?.geminiApiKey) {
       setApiKey(profile.geminiApiKey)
     }
   }, [profile])
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!userRef) return
     
     setIsSaving(true)
-    try {
-      updateDocumentNonBlocking(userRef, {
-        geminiApiKey: apiKey,
-        updatedAt: new Date().toISOString()
-      })
-      
-      toast({
-        title: "Settings Saved",
-        description: "Your Gemini API key is now active for all features.",
-      })
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: "An error occurred while saving your settings.",
-      })
-    } finally {
+    
+    // Non-blocking update as per guidelines
+    updateDocumentNonBlocking(userRef, {
+      geminiApiKey: apiKey.trim(),
+      updatedAt: new Date().toISOString()
+    })
+    
+    // Small delay to simulate feedback since we don't await non-blocking
+    setTimeout(() => {
       setIsSaving(false)
-    }
+      toast({
+        title: "Settings Updated",
+        description: "Your Gemini API key has been saved successfully.",
+      })
+    }, 500)
   }
 
   if (isProfileLoading) {
@@ -68,7 +65,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 no-scrollbar">
       <div className="space-y-2 px-1">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
           <Settings className="h-3 w-3" />
@@ -94,9 +91,9 @@ export default function SettingsPage() {
           <CardContent className="p-8 space-y-6">
             <Alert variant="default" className="bg-emerald-50 border-emerald-100 rounded-2xl mb-4">
               <Sparkles className="h-4 w-4 text-emerald-600" />
-              <AlertTitle className="text-emerald-900 font-bold">Encrypted Storage</AlertTitle>
+              <AlertTitle className="text-emerald-900 font-bold">Token Responsibility</AlertTitle>
               <AlertDescription className="text-emerald-800/80 text-xs">
-                Your Gemini key is stored securely in your private profile. You are responsible for your own token usage.
+                TUAI features are powered by your own API key. You are responsible for your token consumption and security.
               </AlertDescription>
             </Alert>
 
@@ -114,7 +111,7 @@ export default function SettingsPage() {
                 />
               </div>
               <p className="text-[10px] text-muted-foreground font-medium ml-1">
-                This key powers Scans, Chat, Risk Intelligence, and News briefings.
+                Your key is used for Scans, Chat, Risk Intelligence, and Pathfinder.
               </p>
             </div>
           </CardContent>

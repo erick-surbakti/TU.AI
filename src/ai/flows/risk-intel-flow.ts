@@ -7,7 +7,7 @@
  * - RiskIntelOutput - The return type for the riskIntel function.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getAiWithKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const RiskIntelInputSchema = z.object({
@@ -16,6 +16,7 @@ const RiskIntelInputSchema = z.object({
   commodityPrices: z.record(z.string(), z.number()).describe('A dictionary of current commodity prices relevant to farming (e.g., {"fertilizer": 750, "diesel": 1.20}).'),
   exportImportBans: z.array(z.string()).describe('A list of reported export or import bans on agricultural goods or inputs.'),
   policyUpdates: z.string().describe('Summarized updates on relevant government agricultural policies, subsidies, or regulations.'),
+  apiKey: z.string().optional().describe("User's own Gemini API key.")
 });
 export type RiskIntelInput = z.infer<typeof RiskIntelInputSchema>;
 
@@ -27,23 +28,21 @@ const RiskIntelOutputSchema = z.object({
 export type RiskIntelOutput = z.infer<typeof RiskIntelOutputSchema>;
 
 export async function riskIntel(input: RiskIntelInput): Promise<RiskIntelOutput> {
-  return riskIntelFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'riskIntelPrompt',
-  input: { schema: RiskIntelInputSchema },
-  output: { schema: RiskIntelOutputSchema },
-  model: 'googleai/gemini-1.5-pro-latest', // Use Gemini Pro for complex forecasting and reasoning
-  config: {
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-    ],
-  },
-  prompt: `You are an expert agricultural supply chain risk advisor specializing in farming operations in {{region}}.
+  const aiInstance = getAiWithKey(input.apiKey);
+  const prompt = aiInstance.definePrompt({
+    name: 'riskIntelPrompt',
+    input: { schema: RiskIntelInputSchema },
+    output: { schema: RiskIntelOutputSchema },
+    model: 'googleai/gemini-2.5-flash', 
+    config: {
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      ],
+    },
+    prompt: `You are an expert agricultural supply chain risk advisor specializing in farming operations in {{region}}.
 
 Analyze the following information to identify potential supply chain disruptions, assess their impact on local farming, and provide clear, actionable preventative measures.
 
@@ -62,19 +61,11 @@ Analyze the following information to identify potential supply chain disruptions
 Based on this data, determine the overall alert level, summarize the potential impact on farming in {{region}}, and provide specific recommended actions for farmers to mitigate these risks.
 
 Focus on practical advice that farmers can implement.`,
-});
+  });
 
-const riskIntelFlow = ai.defineFlow(
-  {
-    name: 'riskIntelFlow',
-    inputSchema: RiskIntelInputSchema,
-    outputSchema: RiskIntelOutputSchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-      throw new Error('Failed to generate supply chain risk intelligence.');
-    }
-    return output;
+  const { output } = await prompt(input);
+  if (!output) {
+    throw new Error('Failed to generate supply chain risk intelligence.');
   }
-);
+  return output;
+}

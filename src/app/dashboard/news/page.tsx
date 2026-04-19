@@ -1,14 +1,17 @@
-
 "use client"
 
 import * as React from "react"
-import { Newspaper, Loader2, Sparkles, AlertTriangle, ArrowRight, TrendingUp, FileText } from "lucide-react"
+import { Newspaper, Loader2, Sparkles, AlertTriangle, ArrowRight, TrendingUp, FileText, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { generateNewsArticle, type NewsAnalysisOutput } from "@/ai/flows/news-analysis-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
 
 const ARTICLE_POOL: NewsAnalysisOutput[] = [
   {
@@ -35,6 +38,12 @@ const ARTICLE_POOL: NewsAnalysisOutput[] = [
 ]
 
 export default function NewsPage() {
+  const { user } = useUser()
+  const db = useFirestore()
+  const userRef = useMemoFirebase(() => (db && user ? doc(db, "users", user.uid) : null), [db, user])
+  const { data: profile } = useDoc(userRef)
+  const geminiKey = profile?.geminiApiKey
+
   const [article, setArticle] = React.useState<NewsAnalysisOutput>(ARTICLE_POOL[0])
   const [loading, setLoading] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
@@ -43,16 +52,24 @@ export default function NewsPage() {
 
   React.useEffect(() => {
     setMounted(true)
-    // Select an article based on the current day of the month
     const day = new Date().getDate()
     const index = day % ARTICLE_POOL.length
     setArticle(ARTICLE_POOL[index])
   }, [])
 
   const fetchArticle = async (topic: string = "Global food supply chain stressors for ASEAN 2024") => {
+    if (!geminiKey) {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Add your Gemini key in Settings to regenerate analysis."
+      })
+      return
+    }
+
     setLoading(true)
     try {
-      const data = await generateNewsArticle({ topic })
+      const data = await generateNewsArticle({ topic, apiKey: geminiKey })
       setArticle(data)
       toast({
         title: "Intelligence Updated",
@@ -81,7 +98,7 @@ export default function NewsPage() {
   const formattedDate = new Date().toLocaleDateString()
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-32 px-1">
+    <div className="max-w-4xl mx-auto space-y-8 pb-32 px-1 no-scrollbar">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
@@ -97,11 +114,21 @@ export default function NewsPage() {
           disabled={loading}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-          Regenerate Analysis
+          Regenerate AI
         </Button>
       </div>
 
-      <div className={cn("animate-in fade-in slide-in-from-bottom-8 duration-700", loading && "opacity-50 pointer-events-none")}>
+      {!geminiKey && (
+        <Alert variant="default" className="bg-orange-100 border-none rounded-2xl shadow-sm">
+          <AlertCircle className="h-5 w-5 text-orange-600" />
+          <AlertTitle className="text-orange-900 font-bold">Token Responsibility</AlertTitle>
+          <AlertDescription className="text-orange-800 text-xs">
+            To regenerate fresh analysis, please add your own Gemini API key in <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className={cn("animate-in fade-in slide-in-from-bottom-8 duration-700 no-scrollbar", loading && "opacity-50 pointer-events-none")}>
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
           <div className={`h-4 ${riskColors[article.riskLevel as keyof typeof riskColors]}`} />
           <CardHeader className="p-8 md:p-12 pb-6">
@@ -164,7 +191,7 @@ export default function NewsPage() {
       </div>
 
       <Dialog open={showFullReport} onOpenChange={setShowFullReport}>
-        <DialogContent className="max-w-2xl rounded-[2.5rem]">
+        <DialogContent className="max-w-2xl rounded-[2.5rem] bg-white">
           <DialogHeader>
             <DialogTitle className="text-2xl font-headline font-bold flex items-center gap-2">
               <FileText className="h-6 w-6 text-primary" />
@@ -174,7 +201,7 @@ export default function NewsPage() {
               Detailed breakdown of geopolitical impacts and local stressors.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-6 text-slate-600 leading-relaxed font-medium">
+          <div className="space-y-6 py-6 text-slate-600 leading-relaxed font-medium overflow-auto max-h-[60vh] no-scrollbar">
             <p><strong>Dossier Reference:</strong> TUAI-INTEL-{new Date().getFullYear()}-{article.title.substring(0, 3).toUpperCase()}</p>
             <p>This report synthesizes data from global commodity markets, regional policy updates, and Vertex AI predictive models.</p>
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 space-y-4">
