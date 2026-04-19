@@ -81,8 +81,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar side="left" collapsible="icon" className="border-r bg-sidebar no-scrollbar">
         <SidebarHeader className="h-20 flex items-center px-6">
-          <Link href="/" className="flex items-center gap-2 font-headline font-bold text-2xl text-sidebar-primary">
-            <div className="h-10 w-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+          <Link href="/" className="flex items-center gap-3 font-headline font-bold text-2xl text-sidebar-primary group">
+            <div className="h-10 w-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0 shadow-lg group-hover:rotate-12 transition-transform">
               <Sprout className="h-6 w-6 text-sidebar-primary-foreground" />
             </div>
             <span className="group-data-[collapsible=icon]:hidden tracking-tighter">TUAI</span>

@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { doc, setDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -34,31 +33,31 @@ export default function SettingsPage() {
     }
   }, [profile])
 
-  const handleSave = () => {
-    if (!user || !userRef) {
-      toast({
-        variant: "destructive",
-        title: "Connection Error",
-        description: "Firestore is not ready yet. Please wait a moment.",
-      })
-      return
-    }
+  const handleSave = async () => {
+    if (!user || !db) return
     
     setIsSaving(true)
-    
-    setDocumentNonBlocking(userRef, {
-      id: user.uid,
-      geminiApiKey: apiKey.trim(),
-      updatedAt: new Date().toISOString()
-    }, { merge: true })
-    
-    setTimeout(() => {
-      setIsSaving(false)
+    try {
+      // Must include the 'id' field to satisfy Firestore Security Rules
+      await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
+        geminiApiKey: apiKey.trim(),
+        updatedAt: new Date().toISOString()
+      }, { merge: true })
+      
       toast({
         title: "Settings Saved",
         description: "Your Gemini API key is now active for all features.",
       })
-    }, 1000)
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not update settings. Check your connection.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const isActuallyLoading = isAuthLoading || isProfileLoading
