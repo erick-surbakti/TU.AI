@@ -18,7 +18,6 @@ export default function SettingsPage() {
   const db = useFirestore()
   const { toast } = useToast()
   
-  // Use user profile from Firestore to load existing settings
   const userRef = React.useMemo(() => {
     if (!db || !user) return null
     return doc(db, "users", user.uid)
@@ -29,10 +28,9 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = React.useState("")
   const [isSaving, setIsSaving] = React.useState(false)
 
-  // Sync internal state when profile loads
   React.useEffect(() => {
-    if (profile?.brevoApiKey) {
-      setApiKey(profile.brevoApiKey)
+    if (profile?.geminiApiKey) {
+      setApiKey(profile.geminiApiKey)
     }
   }, [profile])
 
@@ -42,13 +40,13 @@ export default function SettingsPage() {
     setIsSaving(true)
     try {
       updateDocumentNonBlocking(userRef, {
-        brevoApiKey: apiKey,
+        geminiApiKey: apiKey,
         updatedAt: new Date().toISOString()
       })
       
       toast({
         title: "Settings Saved",
-        description: "Your API configuration has been updated successfully.",
+        description: "Your Gemini API configuration has been updated successfully.",
       })
     } catch (error) {
       toast({
@@ -90,7 +88,7 @@ export default function SettingsPage() {
                </div>
                <div>
                  <CardTitle className="text-xl font-bold text-slate-800">API Configuration</CardTitle>
-                 <CardDescription className="text-xs font-medium">Connect your external email and data providers.</CardDescription>
+                 <CardDescription className="text-xs font-medium">Connect your Gemini AI data provider.</CardDescription>
                </div>
              </div>
           </CardHeader>
@@ -104,20 +102,20 @@ export default function SettingsPage() {
             </Alert>
 
             <div className="space-y-3">
-              <Label htmlFor="brevoKey" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Brevo (Sendinblue) API Key</Label>
+              <Label htmlFor="geminiKey" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Gemini API Key</Label>
               <div className="relative">
                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <Input 
-                  id="brevoKey"
+                  id="geminiKey"
                   type="password"
-                  placeholder="xkeysib-..."
+                  placeholder="AIzaSy..."
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="pl-12 h-14 rounded-2xl bg-slate-50 border-none shadow-inner text-sm focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
               </div>
               <p className="text-[10px] text-muted-foreground font-medium ml-1">
-                Used to send OTP access codes and automated farm alerts.
+                Used to power your AI diagnostics, chat copilot, and risk intelligence.
               </p>
             </div>
           </CardContent>
@@ -145,7 +143,7 @@ export default function SettingsPage() {
              <div>
                <h3 className="text-lg font-bold text-slate-800">Advanced System Access</h3>
                <p className="text-xs text-muted-foreground leading-relaxed mt-1 font-medium">
-                 In this prototype environment, API keys provided here will override default system environment variables for your specific user session. Ensure your key has permissions for SMTP sending.
+                 Your Gemini key enables autonomous analysis grounded in regional data. Keep this key private.
                </p>
              </div>
           </div>
