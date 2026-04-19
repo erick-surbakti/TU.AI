@@ -36,7 +36,14 @@ export default function SettingsPage() {
   }, [profile])
 
   const handleSave = () => {
-    if (!userRef || !user) return
+    if (!userRef || !user) {
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Firestore is not ready. Please refresh.",
+      })
+      return
+    }
     
     setIsSaving(true)
     
@@ -47,7 +54,7 @@ export default function SettingsPage() {
       updatedAt: new Date().toISOString()
     }, { merge: true })
     
-    // Small delay to simulate feedback since we don't await non-blocking
+    // Provide immediate feedback while the background write happens
     setTimeout(() => {
       setIsSaving(false)
       toast({

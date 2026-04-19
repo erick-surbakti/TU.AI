@@ -103,7 +103,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar side="left" collapsible="icon" className="border-r border-sidebar-border bg-sidebar no-scrollbar">
-        <SidebarHeader className="h-20 flex items-center px-6">
+        <SidebarHeader className="h-20 flex items-center px-6 group-data-[mobile=true]:hidden">
           <Link href="/" className="flex items-center gap-2 font-headline font-bold text-2xl text-sidebar-primary">
             <div className="h-8 w-8 bg-sidebar-primary rounded-lg flex items-center justify-center shrink-0">
               <Sprout className="h-5 w-5 text-sidebar-primary-foreground" />
