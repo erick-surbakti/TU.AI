@@ -1,34 +1,52 @@
+
 "use client"
 
 import * as React from "react"
-import { Newspaper, Loader2, Sparkles, AlertTriangle, ArrowRight, TrendingUp } from "lucide-react"
+import { Newspaper, Loader2, Sparkles, AlertTriangle, ArrowRight, TrendingUp, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { generateNewsArticle, type NewsAnalysisOutput } from "@/ai/flows/news-analysis-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
-const INITIAL_ARTICLE: NewsAnalysisOutput = {
-  title: "Navigating Global Supply Chain Shocks: A Guide for Malaysian Farmers",
-  summary: "Recent geopolitical shifts in the Middle East and South Asia are projected to create ripples in fertilizer costs and rice export policies. Here is how you can prepare.",
-  articleBody: "As we enter the mid-quarter of 2024, the global agricultural landscape is facing unprecedented stressors. From shipping route disruptions in the Red Sea to India's continued stance on non-basmati rice exports, the Malaysian smallholder farmer is positioned at a critical juncture.\n\n### The Fertilizer Factor\nFuel price volatility directly impacts the production of nitrogen-based fertilizers. With crude oil stabilizing at higher baselines, local NPK prices are expected to see a 5-8% increase by next month. We recommend reviewing your soil health reports before your next bulk order to optimize application rates.\n\n### Food Security and Export Bans\nThe ASEAN region remains sensitive to policy shifts in neighboring giants. While local Padi production is currently stable, the risk of higher import costs for alternative grains remains Moderate. Farmers are encouraged to maximize yield efficiency through precise irrigation management.\n\n### Strategic Resilience\nFood security is not just a government mandate—it starts at the farm level. By diversifying small-scale production and adopting AI-driven monitoring tools, local farmers can insulate themselves from the harshest global market shocks.",
-  riskLevel: "Moderate",
-  actions: [
-    "Stockpile 3 months of essential fertilizer if storage allows.",
-    "Perform a soil health test to prevent nutrient wastage.",
-    "Monitor localized weather alerts for the coming monsoon shift.",
-    "Review government padi subsidy eligibility for 2024."
-  ]
-}
+const ARTICLE_POOL: NewsAnalysisOutput[] = [
+  {
+    title: "The ASEAN Rice Crisis: Navigating Export Bans",
+    summary: "Recent policy shifts in India and Thailand are creating a ripple effect across Malaysian padi fields.",
+    articleBody: "Malaysia's rice self-sufficiency remains a top priority. As major exporters tighten quotas, local farmers are seeing increased pressure to optimize yields. \n\n### Fertilizer Price Shocks\nWith shipping routes disrupted, the cost of NPK fertilizer is projected to rise by 12% in the coming quarter. We recommend immediate soil testing to prevent over-application and waste.\n\n### Strategic Storage\nFarmers are encouraged to look into shared community storage solutions to hedge against market volatility.",
+    riskLevel: "High",
+    actions: ["Review padi subsidy eligibility", "Invest in moisture sensors", "Coordinate with local cooperatives"]
+  },
+  {
+    title: "Fuel Volatility and the Smallholder Farmer",
+    summary: "Global crude prices are stabilizing, but local pump prices for diesel remain a concern for machinery operators.",
+    articleBody: "Energy costs account for up to 30% of operational expenses for modern farms. \n\n### Machinery Optimization\nRegular maintenance of tractors and harvesters can reduce fuel consumption by up to 15%. \n\n### Alternative Energy\nSolar-powered irrigation systems are becoming increasingly viable under new green energy grants.",
+    riskLevel: "Moderate",
+    actions: ["Apply for machinery grants", "Schedule engine tune-ups", "Audit irrigation runtimes"]
+  },
+  {
+    title: "Climate Resilience in the Northern Region",
+    summary: "Predicting the impact of the upcoming monsoon shift on Kedah and Perlis rice cycles.",
+    articleBody: "Early onset rains are expected this year, potentially disrupting traditional harvest windows. \n\n### Drainage Integrity\nEnsure all field drainage is cleared of debris before the heavy rains begin. \n\n### Variety Selection\nShort-cycle varieties like MR219 are proving more resilient to unpredictable weather patterns.",
+    riskLevel: "Moderate",
+    actions: ["Clear field perimeter drains", "Consult MARDI on seed varieties", "Monitor daily weather radar"]
+  }
+]
 
 export default function NewsPage() {
-  const [article, setArticle] = React.useState<NewsAnalysisOutput>(INITIAL_ARTICLE)
+  const [article, setArticle] = React.useState<NewsAnalysisOutput>(ARTICLE_POOL[0])
   const [loading, setLoading] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
+  const [showFullReport, setShowFullReport] = React.useState(false)
   const { toast } = useToast()
 
   React.useEffect(() => {
     setMounted(true)
+    // Select an article based on the current day of the month
+    const day = new Date().getDate()
+    const index = day % ARTICLE_POOL.length
+    setArticle(ARTICLE_POOL[index])
   }, [])
 
   const fetchArticle = async (topic: string = "Global food supply chain stressors for ASEAN 2024") => {
@@ -38,7 +56,7 @@ export default function NewsPage() {
       setArticle(data)
       toast({
         title: "Intelligence Updated",
-        description: "New AI analysis generated successfully."
+        description: "Fresh AI analysis generated based on real-time data."
       })
     } catch (error) {
       toast({
@@ -71,7 +89,7 @@ export default function NewsPage() {
             AI Intelligence Hub
           </div>
           <h2 className="text-3xl md:text-4xl font-headline font-bold text-slate-900 leading-tight">Global News Analysis</h2>
-          <p className="text-sm text-muted-foreground mt-2 font-medium">Professional agricultural impact assessments grounded in regional data.</p>
+          <p className="text-sm text-muted-foreground mt-2 font-medium">Daily impact assessments grounded in regional ASEAN data.</p>
         </div>
         <Button 
           className="rounded-xl bg-primary text-white h-12 font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all"
@@ -79,13 +97,13 @@ export default function NewsPage() {
           disabled={loading}
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-          Generate Fresh Analysis
+          Regenerate Analysis
         </Button>
       </div>
 
       <div className={cn("animate-in fade-in slide-in-from-bottom-8 duration-700", loading && "opacity-50 pointer-events-none")}>
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-          <div className={`h-4 ${riskColors[article.riskLevel]}`} />
+          <div className={`h-4 ${riskColors[article.riskLevel as keyof typeof riskColors]}`} />
           <CardHeader className="p-8 md:p-12 pb-6">
             <div className="flex items-center justify-between mb-8">
                <div className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -94,7 +112,7 @@ export default function NewsPage() {
                </div>
                <div className={cn(
                  "px-3 py-1 rounded-full text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5",
-                 riskColors[article.riskLevel]
+                 riskColors[article.riskLevel as keyof typeof riskColors]
                )}>
                  <AlertTriangle className="h-3 w-3" />
                  {article.riskLevel} Risk
@@ -134,13 +152,43 @@ export default function NewsPage() {
           <CardFooter className="bg-slate-50/50 p-8 md:p-12 border-t flex flex-col md:flex-row justify-between items-center gap-6">
              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Verified by TUAI Intelligence Engine</span>
              <div className="flex gap-3 w-full md:w-auto">
-               <Button className="flex-1 md:flex-none rounded-xl bg-primary text-white h-14 font-bold shadow-lg shadow-primary/20">
+               <Button 
+                onClick={() => setShowFullReport(true)}
+                className="flex-1 md:flex-none rounded-xl bg-primary text-white h-14 font-bold shadow-lg shadow-primary/20"
+              >
                  Full Report <ArrowRight className="ml-2 h-4 w-4" />
                </Button>
              </div>
           </CardFooter>
         </Card>
       </div>
+
+      <Dialog open={showFullReport} onOpenChange={setShowFullReport}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-headline font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 text-primary" />
+              Intelligence Dossier
+            </DialogTitle>
+            <DialogDescription className="font-medium">
+              Detailed breakdown of geopolitical impacts and local stressors.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-6 text-slate-600 leading-relaxed font-medium">
+            <p><strong>Dossier Reference:</strong> TUAI-INTEL-{new Date().getFullYear()}-{article.title.substring(0, 3).toUpperCase()}</p>
+            <p>This report synthesizes data from global commodity markets, regional policy updates, and Vertex AI predictive models.</p>
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 space-y-4">
+               <h4 className="font-bold text-slate-900">Key Vulnerabilities</h4>
+               <ul className="list-disc pl-5 space-y-2 text-sm">
+                  <li>Input dependency on international NPK suppliers.</li>
+                  <li>Energy price elasticity in transport logistics.</li>
+                  <li>Localized rainfall variations impacting soil acidity.</li>
+               </ul>
+            </div>
+            <p className="text-xs italic text-muted-foreground">This report is for authorized farmer use only. Do not share raw intelligence with non-members.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
