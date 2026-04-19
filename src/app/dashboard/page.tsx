@@ -16,7 +16,8 @@ import {
   MessageSquare,
   Activity,
   Newspaper,
-  Globe
+  Globe,
+  Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
@@ -215,6 +216,9 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-5 bg-white rounded-3xl border shadow-sm text-sm font-bold text-slate-500 italic relative group hover:border-primary transition-colors cursor-pointer">
                    "What's the best treatment for brown spots on rice leaves?"
+                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                   </div>
                 </div>
                 <Link href="/dashboard/chat">
                   <Button className="w-full bg-secondary text-white hover:bg-secondary/90 rounded-2xl font-black h-14 text-lg shadow-xl shadow-secondary/20 transition-all hover:-translate-y-1">
