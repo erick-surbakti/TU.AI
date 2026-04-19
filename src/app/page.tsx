@@ -1,31 +1,23 @@
 
-'use client';
+'use server';
 
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Sprout, ShieldCheck, MapPin, Zap, ArrowRight, MessageCircle, ClipboardList, BarChart3, Globe } from 'lucide-react';
+import { Sprout, ShieldCheck, MapPin, Zap, ArrowRight, MessageCircle, ClipboardList, BarChart3, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useToast } from '@/hooks/use-toast';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
 
-export default function LandingPage() {
+export default async function LandingPage() {
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-farm');
-  const { toast } = useToast();
-
-  const handleGimmick = (feature: string) => {
-    toast({
-      title: `${feature} Initialized`,
-      description: "This is a prototype gimmick. The full system is launching soon!",
-    });
-  };
-
-  const handleWhitepaper = () => {
-    toast({
-      title: "Whitepaper Downloaded",
-      description: "TUAI Vision 2026: The Roadmap to Zero Export Dependency has been saved.",
-    });
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white selection:bg-primary/20 scroll-smooth">
@@ -75,17 +67,20 @@ export default function LandingPage() {
                 TUAI moves beyond simple advice. Our AI agents monitor global risks, diagnose crop diseases, and execute action plans to secure your harvest.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
-                <Button 
-                  size="lg" 
-                  className="bg-primary hover:bg-primary/90 rounded-full text-lg h-16 px-10 shadow-xl shadow-primary/20 group font-bold"
-                  onClick={() => handleGimmick("Trial Path")}
-                >
-                  Start Your Trial 
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button size="lg" variant="outline" className="rounded-full text-lg h-16 px-10 border-2 border-slate-200 hover:border-primary hover:text-primary font-bold transition-all" asChild>
-                  <Link href="#features">Explore Features</Link>
-                </Button>
+                <Link href="/login">
+                  <Button 
+                    size="lg" 
+                    className="bg-primary hover:bg-primary/90 rounded-full text-lg h-16 px-10 shadow-xl shadow-primary/20 group font-bold w-full sm:w-auto"
+                  >
+                    Start Your Trial 
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+                <Link href="#features">
+                  <Button size="lg" variant="outline" className="rounded-full text-lg h-16 px-10 border-2 border-slate-200 hover:border-primary hover:text-primary font-bold transition-all w-full sm:w-auto">
+                    Explore Features
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -134,24 +129,24 @@ export default function LandingPage() {
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { title: "Crop Disease AI", desc: "Upload a photo and let our vision agents diagnose issues in seconds using Gemini Flash.", icon: Sprout, color: "bg-emerald-500" },
-                { title: "Risk Advisor", desc: "Autonomous monitoring of global news and commodity prices to predict supply shocks.", icon: ShieldCheck, color: "bg-blue-500" },
-                { title: "Farmer Copilot", desc: "Ask anything. Our LLM-powered assistant retrieves policy and weather data for real answers.", icon: MessageCircle, color: "bg-cyan-500" },
-                { title: "Supplier Finder", desc: "Instant location-based searching for fertilizer, seeds, and equipment.", icon: MapPin, color: "bg-orange-500" },
-                { title: "Records Ledger", desc: "Keep all your harvest and treatment data secure and accessible anywhere.", icon: ClipboardList, color: "bg-purple-500" },
-                { title: "Smart Alerts", desc: "Push notifications for localized weather risks and market fluctuations.", icon: Zap, color: "bg-yellow-500" }
+                { title: "Crop Disease AI", desc: "Upload a photo and let our vision agents diagnose issues in seconds using Gemini Flash.", icon: Sprout, color: "bg-emerald-500", link: "/dashboard/disease-scan" },
+                { title: "Risk Advisor", desc: "Autonomous monitoring of global news and commodity prices to predict supply shocks.", icon: ShieldCheck, color: "bg-blue-500", link: "/dashboard/risk-intel" },
+                { title: "Farmer Copilot", desc: "Ask anything. Our LLM-powered assistant retrieves policy and weather data for real answers.", icon: MessageCircle, color: "bg-cyan-500", link: "/dashboard/chat" },
+                { title: "Supplier Finder", desc: "Instant location-based searching for fertilizer, seeds, and equipment.", icon: MapPin, color: "bg-orange-500", link: "/dashboard/suppliers" },
+                { title: "Records Ledger", desc: "Keep all your harvest and treatment data secure and accessible anywhere.", icon: ClipboardList, color: "bg-purple-500", link: "/dashboard/records" },
+                { title: "Smart Alerts", desc: "Push notifications for localized weather risks and market fluctuations.", icon: Zap, color: "bg-yellow-500", link: "/dashboard" }
               ].map((f, i) => (
-                <div 
-                  key={i} 
-                  className="p-10 rounded-[32px] bg-white border border-slate-100 hover:border-primary/20 transition-all hover:shadow-2xl hover:shadow-primary/5 group cursor-pointer"
-                  onClick={() => handleGimmick(f.title)}
-                >
-                  <div className={`h-12 w-12 ${f.color} rounded-xl flex items-center justify-center mb-8 shadow-lg shadow-black/10 group-hover:-rotate-6 transition-transform`}>
-                    <f.icon className="h-6 w-6 text-white" />
+                <Link href={f.link} key={i}>
+                  <div 
+                    className="p-10 rounded-[32px] bg-white border border-slate-100 hover:border-primary/20 transition-all hover:shadow-2xl hover:shadow-primary/5 group cursor-pointer h-full"
+                  >
+                    <div className={`h-12 w-12 ${f.color} rounded-xl flex items-center justify-center mb-8 shadow-lg shadow-black/10 group-hover:-rotate-6 transition-transform`}>
+                      <f.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-4 text-slate-900">{f.title}</h3>
+                    <p className="text-slate-500 leading-relaxed font-medium">{f.desc}</p>
                   </div>
-                  <h3 className="text-2xl font-bold mb-4 text-slate-900">{f.title}</h3>
-                  <p className="text-slate-500 leading-relaxed font-medium">{f.desc}</p>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -169,7 +164,30 @@ export default function LandingPage() {
                 <p className="text-xl text-primary-foreground/80 leading-relaxed mb-8 font-medium">
                   We believe that technology shouldn't just be for big corporations. TUAI was founded to bring the power of Generative AI to every smallholder farmer in Southeast Asia, ensuring food security for the next generation.
                 </p>
-                <Button variant="secondary" size="lg" className="rounded-full font-bold px-8" onClick={handleWhitepaper}>Read Our Whitepaper</Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="lg" className="rounded-full font-bold px-8">Read Our Whitepaper</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-3xl font-headline font-bold text-primary">TUAI Vision 2026</DialogTitle>
+                      <DialogDescription className="text-lg font-medium">The Roadmap to Zero Export Dependency</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4 text-slate-700 leading-relaxed">
+                      <p className="font-bold text-xl">1. The Crisis of Dependency</p>
+                      <p>ASEAN nations, while fertile, remain heavily dependent on volatile global supply chains for fertilizers and machinery. Geopolitical shocks (e.g., Eastern European conflicts) directly impact the cost of Padi production in Kedah and Selangor.</p>
+                      
+                      <p className="font-bold text-xl">2. AI as a Sovereign Shield</p>
+                      <p>TUAI implements locally-grounded LLMs (Gemini Pro) to monitor these global shocks 24/7. By providing farmers with real-time risk assessments, we allow them to stockpile resources or shift strategies before the market crashes.</p>
+                      
+                      <p className="font-bold text-xl">3. The Future of Smallholder Farms</p>
+                      <p>Our roadmap includes the integration of autonomous drone spraying and AI soil sensors, traditionally reserved for massive estates, making them accessible to farmers with less than 5 hectares.</p>
+                      
+                      <p className="font-bold text-xl">Conclusion</p>
+                      <p>Food security is national security. TUAI is more than a tool; it is a digital ecosystem designed to ensure Malaysia and the wider ASEAN region can feed its people regardless of global instability.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-[32px] p-8 border border-white/20">
                  <div className="space-y-6">
@@ -226,27 +244,26 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
               <div className="flex flex-col gap-4">
                 <span className="text-white font-bold">Product</span>
-                <button onClick={() => handleGimmick("Features")} className="text-left hover:text-primary transition-colors">Features</button>
-                <button onClick={() => handleGimmick("Pricing")} className="text-left hover:text-primary transition-colors">Pricing</button>
+                <Link href="#features" className="text-left hover:text-primary transition-colors">Features</Link>
+                <Link href="/login" className="text-left hover:text-primary transition-colors">Pricing</Link>
               </div>
               <div className="flex flex-col gap-4">
                 <span className="text-white font-bold">Company</span>
-                <button onClick={() => handleGimmick("About")} className="text-left hover:text-primary transition-colors">About Us</button>
-                <button onClick={() => handleGimmick("Careers")} className="text-left hover:text-primary transition-colors">Careers</button>
+                <Link href="#mission" className="text-left hover:text-primary transition-colors">About Us</Link>
+                <Link href="/login" className="text-left hover:text-primary transition-colors">Careers</Link>
               </div>
               <div className="flex flex-col gap-4">
                 <span className="text-white font-bold">Legal</span>
-                <button onClick={() => handleGimmick("Privacy")} className="text-left hover:text-primary transition-colors">Privacy</button>
-                <button onClick={() => handleGimmick("Terms")} className="text-left hover:text-primary transition-colors">Terms</button>
+                <Link href="/login" className="text-left hover:text-primary transition-colors">Privacy</Link>
+                <Link href="/login" className="text-left hover:text-primary transition-colors">Terms</Link>
               </div>
             </div>
           </div>
           <div className="pt-8 border-t border-slate-800 text-sm flex flex-col md:flex-row justify-between items-center gap-4">
             <p>© 2026 TUAI Agriculture. All rights reserved. Malaysia-first.</p>
             <div className="flex gap-6">
-              {/* Gimmick social buttons */}
-              <button onClick={() => handleGimmick("Twitter")} className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">X.com</button>
-              <button onClick={() => handleGimmick("LinkedIn")} className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">LinkedIn</button>
+              <Link href="https://x.com" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">X.com</Link>
+              <Link href="https://linkedin.com" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">LinkedIn</Link>
             </div>
           </div>
         </div>

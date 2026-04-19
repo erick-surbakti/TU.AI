@@ -34,7 +34,7 @@ import {
 
 const navItems = [
   {
-    title: "Home",
+    title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
@@ -77,6 +77,12 @@ const navItems = [
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [mounted, setMounted] = React.useState(false)
+
+  // Hydration safety: ensure component is mounted before rendering dynamic parts
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <SidebarProvider>
@@ -140,7 +146,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="hidden md:block h-6 w-[1px] bg-slate-200 mx-4" />
             <h1 className="font-headline font-bold text-base md:text-lg text-slate-800 hidden sm:block">
-              {navItems.find(item => item.href === pathname)?.title || "Home"}
+              {mounted ? (navItems.find(item => item.href === pathname)?.title || "Dashboard") : "Dashboard"}
             </h1>
           </div>
           <div className="flex items-center gap-3 md:gap-4">
