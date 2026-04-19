@@ -250,20 +250,55 @@ export default async function LandingPage() {
               <div className="flex flex-col gap-4">
                 <span className="text-white font-bold">Company</span>
                 <Link href="#mission" className="text-left hover:text-primary transition-colors">About Us</Link>
-                <Link href="/login" className="text-left hover:text-primary transition-colors">Careers</Link>
+                <Dialog>
+                  <DialogTrigger className="text-left hover:text-primary transition-colors">Careers</DialogTrigger>
+                  <DialogContent className="rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Join the TUAI Team</DialogTitle>
+                      <DialogDescription>
+                        We are currently looking for agricultural engineers and AI specialists to help secure the future of farming in ASEAN.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <p className="text-sm font-medium">Email your CV to careers@tuai.my</p>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="flex flex-col gap-4">
                 <span className="text-white font-bold">Legal</span>
-                <Link href="/login" className="text-left hover:text-primary transition-colors">Privacy</Link>
-                <Link href="/login" className="text-left hover:text-primary transition-colors">Terms</Link>
+                <Dialog>
+                  <DialogTrigger className="text-left hover:text-primary transition-colors">Privacy</DialogTrigger>
+                  <DialogContent className="max-h-[80vh] overflow-y-auto rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Privacy Policy</DialogTitle>
+                      <DialogDescription>How TUAI protects your farm data.</DialogDescription>
+                    </DialogHeader>
+                    <div className="text-sm space-y-4">
+                      <p>At TUAI, we prioritize the confidentiality of your agricultural data. All uploaded images and farm records are encrypted and used solely for providing AI-driven insights to your account.</p>
+                      <p>We do not sell your personal or farm-specific data to third parties. Data is aggregated anonymously to improve regional crop performance models.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Dialog>
+                  <DialogTrigger className="text-left hover:text-primary transition-colors">Terms</DialogTrigger>
+                  <DialogContent className="max-h-[80vh] overflow-y-auto rounded-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Terms of Service</DialogTitle>
+                      <DialogDescription>Your agreement with TUAI Agriculture.</DialogDescription>
+                    </DialogHeader>
+                    <div className="text-sm space-y-4">
+                      <p>By using TUAI, you agree to provide accurate information regarding your farming operations to ensure the best possible AI results.</p>
+                      <p>The advice provided by the AI Copilot is grounded in regional data but should be verified with local agricultural authorities for critical decisions.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </div>
           <div className="pt-8 border-t border-slate-800 text-sm flex flex-col md:flex-row justify-between items-center gap-4">
             <p>© 2026 TUAI Agriculture. All rights reserved. Malaysia-first.</p>
             <div className="flex gap-6">
-              <Link href="https://x.com" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">X.com</Link>
-              <Link href="https://linkedin.com" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">LinkedIn</Link>
+              <Link href="https://x.com" target="_blank" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">X.com</Link>
+              <Link href="https://linkedin.com" target="_blank" className="hover:text-primary transition-colors uppercase tracking-widest font-black text-[10px]">LinkedIn</Link>
             </div>
           </div>
         </div>
