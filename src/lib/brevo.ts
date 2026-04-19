@@ -1,12 +1,16 @@
-
 /**
  * Server-side utility for sending emails via Brevo API.
  */
 export async function sendEmailOtp(toEmail: string, otp: string) {
-  // Using hardcoded credentials provided for the prototype to ensure reliability
-  const apiKey = 'xsmtpsib-759e6b1bfbe680a806cae94a583faf256c89dcc4e0875afde1dd692cfdc5e25e-oJQ1PbX1bwhIVcBi';
-  const senderEmail = 'ericksurbakti39@gmail.com';
+  // API key is now retrieved from environment variables for security.
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'ericksurbakti39@gmail.com';
   const senderName = 'TUAI - Your PlantBot Friends';
+
+  if (!apiKey) {
+    console.warn('BREVO_API_KEY is not set. Email delivery will be skipped in prototype mode.');
+    return { success: false, message: 'API key missing' };
+  }
 
   try {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {

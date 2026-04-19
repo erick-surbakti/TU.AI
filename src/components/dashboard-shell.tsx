@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -84,6 +83,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
+  if (!mounted) return null
+
   return (
     <SidebarProvider>
       {/* Desktop Sidebar */}
@@ -146,7 +147,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="hidden md:block h-6 w-[1px] bg-slate-200 mx-4" />
             <h1 className="font-headline font-bold text-base md:text-lg text-slate-800 hidden sm:block">
-              {mounted ? (navItems.find(item => item.href === pathname)?.title || "Dashboard") : "Dashboard"}
+              {navItems.find(item => item.href === pathname)?.title || "Dashboard"}
             </h1>
           </div>
           <div className="flex items-center gap-3 md:gap-4">
@@ -164,7 +165,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation - High Fidelity & Fixed Positioning */}
+        {/* Mobile Bottom Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/95 backdrop-blur-xl border-t flex md:hidden z-50 px-1 pb-safe-area-inset-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
           {navItems.slice(0, 5).map((item) => (
             <Link 
