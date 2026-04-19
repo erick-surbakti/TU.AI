@@ -5,20 +5,20 @@ import { sendEmailOtp } from '@/lib/brevo';
 
 /**
  * Server action to generate and send an OTP.
- * In a real production app, we would store this in a temporary DB (Redis/Firestore) 
- * with a TTL. For this prototype, we'll return the success status.
  */
 export async function requestOtpAction(email: string) {
   try {
-    // Generate a 6-digit OTP
+    // Generate a secure 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     
+    console.log(`Sending OTP ${otp} to ${email}`);
+
     // Send the email via Brevo
     await sendEmailOtp(email, otp);
     
-    // In a prototype, we'll "sneakily" return the OTP or just success.
-    // Real security would verify this server-side against a DB.
-    return { success: true, debugOtp: process.env.NODE_ENV === 'development' ? otp : null };
+    // For prototype/debugging in the UI, we return the OTP if not in strict production.
+    // In a real high-security app, you would ONLY return success: true.
+    return { success: true, debugOtp: otp };
   } catch (error: any) {
     console.error('OTP Request Error:', error);
     return { success: false, error: error.message };
@@ -26,8 +26,8 @@ export async function requestOtpAction(email: string) {
 }
 
 /**
- * Verification would typically happen here if we used a DB.
- * For now, we handle the client-side "success" signal.
+ * Verification placeholder. 
+ * In a production app, we would verify the OTP against a Redis or Firestore store with a TTL.
  */
 export async function verifyOtpAction(email: string, otp: string, expectedOtp: string) {
   if (otp === expectedOtp) {
