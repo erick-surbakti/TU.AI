@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * TUAI Application Security Rules
+     *
+     * Core Philosophy:
+     * This ruleset enforces a hybrid security model tailored for agricultural management. 
+     * It combines strict user-ownership for personal data (profiles, scans, chats) 
+     * with a robust collaborative model for farm management using denormalized role maps.
+     *
+     * Data Structure:
+     * - /users/{userId}: Private user profiles and personal subcollections (scans, alerts, chats).
+     * - /farms/{farmId}: Shared farm entities and collaborative subcollections (crop records, activities).
+     * - /suppliers & /publicAlerts: Globally readable resources for authenticated users.
+     *
+     * Key Security Decisions:
+     * - Denormalization for Performance: To avoid costly 'get()' calls, subcollections under 
+     *   farms (e.g., cropRecords) expect a 'farmMembers' map to be denormalized directly onto 
+     *   the document. This allows O(1) authorization checks for collaborative access.
+     * - Structural Segregation: User-specific alerts are kept in user subcollections, 
+     *   while regional/system alerts are stored in top-level public collections.
+     * - Prototyping Flexibility: Rules enforce WHO can access data and ensure relational 
+     *   integrity (e.g., ID immutability), but do not restrict the specific data schema 
+     *   to allow for rapid development.
+     */
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks if a user is an owner of a document that already exists. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if the authenticated user's UID is a key in the provided membership map. */
+    function isMember(membersMap) {
+      return isSignedIn() && membersMap != null && request.auth.uid in membersMap;
+    }
+
+    /** @description Checks if the user is a member of an existing document. */
+    function isExistingMember(membersMap) {
+      return resource != null && isMember(membersMap);
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for user profile documents. Ensures users can only manage their own profile.
+     * @path /users/{userId}
+     * @allow (create) if the userId matches the auth UID and the internal ID field is set correctly.
+     * @deny (update) if trying to modify another user's profile or change the immutable ID field.
+     * @principle Ownership-based access with self-creation and relational integrity.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for AI crop scan results. Private to the user who initiated the scan.
+       * @path /users/{userId}/cropScanResults/{scanId}
+       * @allow (list) if the user is the owner of the parent path.
+       * @deny (get) if an authenticated user attempts to read a scan belonging to a different userId.
+       * @principle User-scoped subcollection access.
+       */
+      match /cropScanResults/{scanId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for user-specific alerts. Private to the targeted user.
+       * @path /users/{userId}/alerts/{alertId}
+       * @allow (update) if the owner is marking an alert as read.
+       * @deny (create) if a user attempts to create an alert for someone else.
+       * @principle Ownership-based write access.
+       */
+      match /alerts/{alertId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Rules for AI chat sessions. Private conversations with the copilot.
+       * @path /users/{userId}/chatSessions/{sessionId}
+       * @allow (create) if the internal userId field matches the path and auth.
+       * @deny (list) if the requester is not the session owner.
+       * @principle Relational integrity between path and document data.
+       */
+      match /chatSessions/{sessionId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    /**
+     * @description Rules for collaborative Farm management. Uses a members map for access control.
+     * @path /farms/{farmId}
+     * @allow (get) if the user's UID is a key in the farm's members map.
+     * @deny (update) if a non-member attempts to edit farm details.
+     * @principle Shared access via membership map.
+     */
+    match /farms/{farmId} {
+      allow get: if isMember(resource.data.members);
+      allow list: if isSignedIn(); // Queries must still filter by membership (QAPs).
+      allow create: if isSignedIn() && isMember(request.resource.data.members);
+      allow update: if isExistingMember(resource.data.members);
+      allow delete: if isExistingMember(resource.data.members);
+
+      /**
+       * @description Rules for crop records within a farm. Relies on denormalized membership.
+       * @path /farms/{farmId}/cropRecords/{recordId}
+       * @allow (create) if the user is in the incoming farmMembers map.
+       * @deny (update) if trying to change the farmId reference.
+       * @principle Authorization independence via denormalized membership maps.
+       */
+      match /cropRecords/{recordId} {
+        allow get: if isMember(resource.data.farmMembers);
+        allow list: if isSignedIn(); // Expects client-side where('farmMembers.' + uid, '!=', null).
+        allow create: if isMember(request.resource.data.farmMembers) && request.resource.data.farmId == farmId;
+        allow update: if isExistingMember(resource.data.farmMembers) && request.resource.data.farmId == resource.data.farmId;
+        allow delete: if isExistingMember(resource.data.farmMembers);
+      }
+
+      /**
+       * @description Rules for farm activities. Relies on denormalized membership.
+       * @path /farms/{farmId}/farmActivities/{activityId}
+       * @allow (get) if the user is in the farmMembers map of the document.
+       * @deny (delete) if the user is not a member of the farm.
+       * @principle Performance-optimized collaborative rules.
+       */
+      match /farmActivities/{activityId} {
+        allow get: if isMember(resource.data.farmMembers);
+        allow list: if isSignedIn();
+        allow create: if isMember(request.resource.data.farmMembers) && request.resource.data.farmId == farmId;
+        allow update: if isExistingMember(resource.data.farmMembers) && request.resource.data.farmId == resource.data.farmId;
+        allow delete: if isExistingMember(resource.data.farmMembers);
+      }
+
+      /**
+       * @description Rules for farm-targeted alerts. Relies on denormalized membership.
+       * @path /farms/{farmId}/alerts/{alertId}
+       * @allow (get) if the user is a member of the targeted farm.
+       * @deny (update) if the user is not a member.
+       * @principle Shared access to farm notifications.
+       */
+      match /alerts/{alertId} {
+        allow get: if isMember(resource.data.farmMembers);
+        allow list: if isSignedIn();
+        allow create: if isMember(request.resource.data.farmMembers);
+        allow update: if isExistingMember(resource.data.farmMembers);
+        allow delete: if isExistingMember(resource.data.farmMembers);
+      }
+    }
+
+    /**
+     * @description Rules for global/regional alerts. Readable by all authenticated users.
+     * @path /publicAlerts/{alertId}
+     * @allow (get, list) if the user is signed in.
+     * @deny (write) to all clients; restricted to administrative processes.
+     * @principle Public read with restricted write access.
+     */
+    match /publicAlerts/{alertId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false; // Admin/System only.
+      allow update: if false; // Admin/System only.
+      allow delete: if false; // Admin/System only.
+    }
+
+    /**
+     * @description Rules for the agricultural supplier directory.
+     * @path /suppliers/{supplierId}
+     * @allow (get, list) if the user is signed in.
+     * @deny (write) to prevent users from tampering with supplier data.
+     * @principle Global resource accessibility for authenticated users.
+     */
+    match /suppliers/{supplierId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false; // Admin only.
+      allow update: if false; // Admin only.
+      allow delete: if false; // Admin only.
+    }
+  }
+}

@@ -1,0 +1,647 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile information, linked to their authentication identity. This entity stores details about the farmer or administrator using the TUAI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity. (Primary Key)"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for authentication (e.g., OTP login) and communication.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's preferred name to be displayed in the application."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number, primarily for notification purposes. Optional."
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "The ISO 3166-1 alpha-2 country code associated with the user, e.g., 'MY' for Malaysia. Used for regional data tailoring."
+        },
+        "language": {
+          "type": "string",
+          "description": "The preferred language of the user, e.g., 'en-US', 'ms-MY'. Used for localization."
+        },
+        "farmIds": {
+          "type": "array",
+          "description": "References to Farm entities that this user is associated with. (Relationship: UserProfile N:N Farm)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "countryCode",
+        "language"
+      ]
+    },
+    "Farm": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Farm",
+      "type": "object",
+      "description": "Represents a specific farm owned or managed by a user. It includes geographical and descriptive details about the agricultural land.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Farm entity. (Primary Key)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the farm."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the farm."
+        },
+        "addressText": {
+          "type": "string",
+          "description": "The human-readable address of the farm."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The geographical latitude of the farm's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The geographical longitude of the farm's location."
+        },
+        "farmSizeValue": {
+          "type": "number",
+          "description": "The numerical value of the farm's size."
+        },
+        "farmSizeUnit": {
+          "type": "string",
+          "description": "The unit of measurement for the farm's size (e.g., 'hectares', 'acres')."
+        },
+        "userIds": {
+          "type": "array",
+          "description": "References to UserProfile entities that are associated with managing this farm. (Relationship: Farm N:N UserProfile)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "addressText",
+        "latitude",
+        "longitude",
+        "farmSizeValue",
+        "farmSizeUnit",
+        "userIds"
+      ]
+    },
+    "CropRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CropRecord",
+      "type": "object",
+      "description": "Stores details about a specific crop planting or batch on a farm, including its type, planting date, and status.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CropRecord entity. (Primary Key)"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to the Farm where this crop is planted. (Relationship: Farm 1:N CropRecord)"
+        },
+        "cropType": {
+          "type": "string",
+          "description": "The type of crop being cultivated (e.g., 'Padi', 'Sawit', 'Sayur')."
+        },
+        "variety": {
+          "type": "string",
+          "description": "The specific variety of the crop (e.g., 'MR219'). Optional."
+        },
+        "plantingDate": {
+          "type": "string",
+          "description": "The date and time when the crop was planted.",
+          "format": "date-time"
+        },
+        "harvestDate": {
+          "type": "string",
+          "description": "The planned or actual date and time of the crop harvest. Optional.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the crop (e.g., 'Planned', 'Planted', 'Growing', 'Harvested', 'Completed')."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or observations about this crop record. Optional."
+        }
+      },
+      "required": [
+        "id",
+        "farmId",
+        "cropType",
+        "plantingDate",
+        "status"
+      ]
+    },
+    "FarmActivity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FarmActivity",
+      "type": "object",
+      "description": "Logs various activities performed on a farm or for a specific crop record, such as fertilization, pest control, or harvest.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FarmActivity entity. (Primary Key)"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to the Farm where this activity took place. (Relationship: Farm 1:N FarmActivity)"
+        },
+        "cropRecordId": {
+          "type": "string",
+          "description": "Reference to the CropRecord related to this activity. Optional, if activity is farm-general. (Relationship: CropRecord 1:N FarmActivity)"
+        },
+        "activityType": {
+          "type": "string",
+          "description": "The type of activity performed (e.g., 'Planting', 'Fertilization', 'Pest Control', 'Irrigation', 'Harvest', 'Observation')."
+        },
+        "activityDate": {
+          "type": "string",
+          "description": "The date and time when the activity was performed.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the activity."
+        },
+        "materialsUsed": {
+          "type": "string",
+          "description": "Description of materials used during the activity (e.g., 'Urea fertilizer 50kg'). Optional."
+        },
+        "cost": {
+          "type": "number",
+          "description": "The cost associated with this activity. Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the activity. Optional."
+        }
+      },
+      "required": [
+        "id",
+        "farmId",
+        "activityType",
+        "activityDate",
+        "description"
+      ]
+    },
+    "CropScanResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CropScanResult",
+      "type": "object",
+      "description": "Stores the results of AI-powered crop image analysis for disease identification and recommendations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CropScanResult entity. (Primary Key)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who initiated the scan. (Relationship: UserProfile 1:N CropScanResult)"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to the Farm associated with the scanned crop. Optional. (Relationship: Farm 1:N CropScanResult)"
+        },
+        "cropRecordId": {
+          "type": "string",
+          "description": "Reference to the CropRecord if the scan is specific to a planted crop batch. Optional. (Relationship: CropRecord 1:N CropScanResult)"
+        },
+        "imageStoragePath": {
+          "type": "string",
+          "description": "The path or URL to the uploaded crop image in Firebase Storage."
+        },
+        "scanDate": {
+          "type": "string",
+          "description": "The date and time when the crop image was scanned.",
+          "format": "date-time"
+        },
+        "diseaseIdentified": {
+          "type": "string",
+          "description": "The name of the disease identified by the AI, or a summary if multiple are found."
+        },
+        "confidenceScore": {
+          "type": "number",
+          "description": "A numerical score indicating the AI's confidence in the disease identification (0.0 to 1.0). Optional."
+        },
+        "recommendations": {
+          "type": "string",
+          "description": "AI-generated recommendations for treating the identified disease."
+        },
+        "status": {
+          "type": "string",
+          "description": "The processing status of the scan (e.g., 'Processed', 'Pending Review')."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "imageStoragePath",
+        "scanDate",
+        "diseaseIdentified",
+        "recommendations",
+        "status"
+      ]
+    },
+    "Alert": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Alert",
+      "type": "object",
+      "description": "Represents an alert or notification generated by the AI system, potentially targeted to users or farms, providing timely information or actions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Alert entity. (Primary Key)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile targeted by this alert. Optional, if the alert is broadcast. (Relationship: UserProfile 1:N Alert)"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Reference to the Farm targeted by this alert. Optional, if the alert is user-level or broadcast. (Relationship: Farm 1:N Alert)"
+        },
+        "alertType": {
+          "type": "string",
+          "description": "The category of the alert (e.g., 'Risk', 'Weather', 'Market', 'Recommendation', 'System')."
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title for the alert."
+        },
+        "message": {
+          "type": "string",
+          "description": "The main content or body of the alert message."
+        },
+        "severity": {
+          "type": "string",
+          "description": "The severity level of the alert (e.g., 'Info', 'Warning', 'Critical')."
+        },
+        "issuedDate": {
+          "type": "string",
+          "description": "The date and time when the alert was issued.",
+          "format": "date-time"
+        },
+        "validUntilDate": {
+          "type": "string",
+          "description": "The date and time until which the alert is considered valid. Optional.",
+          "format": "date-time"
+        },
+        "region": {
+          "type": "string",
+          "description": "The geographical region relevant to this alert (e.g., 'Malaysia-Kedah', 'ASEAN')."
+        },
+        "cropAffected": {
+          "type": "string",
+          "description": "The specific crop type affected by this alert (e.g., 'Padi', 'All'). Optional."
+        },
+        "recommendedActions": {
+          "type": "array",
+          "description": "A list of actionable steps recommended by the AI in response to the alert.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Indicates whether the user has read this alert."
+        }
+      },
+      "required": [
+        "id",
+        "alertType",
+        "title",
+        "message",
+        "severity",
+        "issuedDate",
+        "region",
+        "recommendedActions",
+        "isRead"
+      ]
+    },
+    "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Supplier",
+      "type": "object",
+      "description": "Contains information about agricultural suppliers, including their contact details, location, and products offered, used for the 'Nearby Supplier Finder' feature.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Supplier entity. (Primary Key)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the supplier or business."
+        },
+        "contactPerson": {
+          "type": "string",
+          "description": "The name of a primary contact person at the supplier. Optional."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the supplier. Optional.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The primary phone number of the supplier. Optional."
+        },
+        "website": {
+          "type": "string",
+          "description": "The official website URL of the supplier. Optional.",
+          "format": "uri"
+        },
+        "addressText": {
+          "type": "string",
+          "description": "The human-readable physical address of the supplier."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The geographical latitude of the supplier's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The geographical longitude of the supplier's location."
+        },
+        "productsServices": {
+          "type": "array",
+          "description": "A list of products or services offered by the supplier (e.g., 'Fertilizer', 'Seeds', 'Pesticides', 'Farm Equipment').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any additional notes or internal information about the supplier. Optional."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "addressText",
+        "latitude",
+        "longitude",
+        "productsServices"
+      ]
+    },
+    "ChatSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatSession",
+      "type": "object",
+      "description": "Stores the history of a conversation session with the Farmer Copilot Assistant, including messages exchanged between the user and the AI.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatSession entity. (Primary Key)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who participated in this chat session. (Relationship: UserProfile 1:N ChatSession)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The date and time when the chat session started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The date and time when the chat session ended. Optional.",
+          "format": "date-time"
+        },
+        "topic": {
+          "type": "string",
+          "description": "A brief summary or primary topic of the chat session (e.g., 'fertilizer advice', 'crop disease query')."
+        },
+        "messages": {
+          "type": "array",
+          "description": "An ordered list of messages exchanged within this chat session.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startTime",
+        "topic",
+        "messages"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile data, private to the user. The document ID `{userId}` matches `request.auth.uid`. Each document in this collection represents a UserProfile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/farms/{farmId}",
+        "definition": {
+          "entityName": "Farm",
+          "schema": {
+            "$ref": "#/backend/entities/Farm"
+          },
+          "description": "Stores collaborative farm details. Includes a 'members' map (e.g., {uid1: 'owner', uid2: 'viewer'}) for explicit role-based authorization. Access is restricted to users listed in this map, enabling multiple users to manage a single farm.",
+          "params": [
+            {
+              "name": "farmId",
+              "description": "The unique ID of the farm."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/farms/{farmId}/cropRecords/{cropRecordId}",
+        "definition": {
+          "entityName": "CropRecord",
+          "schema": {
+            "$ref": "#/backend/entities/CropRecord"
+          },
+          "description": "Stores records of crop plantings specific to a farm. Includes denormalized 'farmMembers' map for authorization independence, copied from its parent Farm document's 'members' map.",
+          "params": [
+            {
+              "name": "farmId",
+              "description": "The unique ID of the parent farm."
+            },
+            {
+              "name": "cropRecordId",
+              "description": "The unique ID of the crop record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/farms/{farmId}/farmActivities/{activityId}",
+        "definition": {
+          "entityName": "FarmActivity",
+          "schema": {
+            "$ref": "#/backend/entities/FarmActivity"
+          },
+          "description": "Logs activities performed on a farm. Includes denormalized 'farmMembers' map for authorization independence, copied from its parent Farm document's 'members' map.",
+          "params": [
+            {
+              "name": "farmId",
+              "description": "The unique ID of the parent farm."
+            },
+            {
+              "name": "activityId",
+              "description": "The unique ID of the farm activity."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/cropScanResults/{cropScanResultId}",
+        "definition": {
+          "entityName": "CropScanResult",
+          "schema": {
+            "$ref": "#/backend/entities/CropScanResult"
+          },
+          "description": "Stores results of AI crop image analysis, private to the user who initiated the scan. The document ID `{cropScanResultId}` corresponds to the `id` field within the entity.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who performed the scan, matching `request.auth.uid`."
+            },
+            {
+              "name": "cropScanResultId",
+              "description": "The unique ID of the crop scan result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/alerts/{alertId}",
+        "definition": {
+          "entityName": "Alert",
+          "schema": {
+            "$ref": "#/backend/entities/Alert"
+          },
+          "description": "Stores alerts specifically targeted to a user. Access is private to the user, where `{userId}` matches `request.auth.uid`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user targeted by the alert, matching `request.auth.uid`."
+            },
+            {
+              "name": "alertId",
+              "description": "The unique ID of the alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/farms/{farmId}/alerts/{alertId}",
+        "definition": {
+          "entityName": "Alert",
+          "schema": {
+            "$ref": "#/backend/entities/Alert"
+          },
+          "description": "Stores alerts specifically targeted to a farm. Includes denormalized 'farmMembers' map for authorization independence, copied from its parent Farm document's 'members' map.",
+          "params": [
+            {
+              "name": "farmId",
+              "description": "The unique ID of the parent farm."
+            },
+            {
+              "name": "alertId",
+              "description": "The unique ID of the alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/publicAlerts/{alertId}",
+        "definition": {
+          "entityName": "Alert",
+          "schema": {
+            "$ref": "#/backend/entities/Alert"
+          },
+          "description": "Stores public or region-wide alerts, readable by any authenticated user. Writing would typically be restricted to administrators. Client-side filtering by region is expected for display.",
+          "params": [
+            {
+              "name": "alertId",
+              "description": "The unique ID of the alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": {
+            "$ref": "#/backend/entities/Supplier"
+          },
+          "description": "Stores information about agricultural suppliers. Publicly readable by authenticated users; write access typically restricted to administrators. Client-side filtering for 'Nearby Supplier Finder' is expected.",
+          "params": [
+            {
+              "name": "supplierId",
+              "description": "The unique ID of the supplier."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/chatSessions/{chatSessionId}",
+        "definition": {
+          "entityName": "ChatSession",
+          "schema": {
+            "$ref": "#/backend/entities/ChatSession"
+          },
+          "description": "Stores chat sessions with the AI copilot, private to the user. The document ID `{chatSessionId}` corresponds to the `id` field within the entity.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who initiated the chat session, matching `request.auth.uid`."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique ID of the chat session."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes secure, scalable, and debuggable authorization by strictly adhering to the core design principles. This structure leverages path-based authorization for user-centric data, and denormalized membership maps for collaborative data, while segregating data with different security postures into distinct collections.\n\n**Authorization Independence via Denormalization (CRITICAL):**\n1.  **Collaborative Farm Data:** For entities like `Farm`, which are collaborative (managed by multiple users), a top-level collection `/farms/{farmId}` is used. Each `Farm` document will include a `members` map (e.g., `{'uid1': 'owner', 'uid2': 'viewer'}`) to explicitly define user roles and access. Crucially, for subcollections of `Farm` (e.g., `/farms/{farmId}/cropRecords`, `/farms/{farmId}/farmActivities`, `/farms/{farmId}/alerts`), the `members` map from the parent `Farm` document is **denormalized** and copied into `resource.data.farmMembers` within each child document. This eliminates the need for security rules to perform `get()` operations on the parent `Farm` document, making rules atomic, simpler (`request.auth.uid in resource.data.farmMembers`), and highly debuggable. This approach ensures that child documents can be created or updated independently without needing to read the parent, enabling robust transactions and batch writes.\n\n**QAPs (Rules are not Filters) Support:**\n1.  **Private User Data:** For collections organized under `/users/{userId}/...` (e.g., `UserProfile`, `ChatSession`, `CropScanResult`, user-specific `Alerts`), security rules enforce that `request.auth.uid` matches the `{userId}` wildcard in the path. This inherently supports `list` operations (QAPs) because any query for these subcollections is already scoped to the authenticated user's private data, and the rules guarantee only that user can access it.\n2.  **Collaborative Farm Data:** Users can query for farms they are members of by using a `where` clause on the `members` map (e.g., `db.collection('farms').where('members.' + auth.uid, '==', 'owner')`). Once a `farmId` is obtained, `list` operations on subcollections like `cropRecords` or `farmActivities` are secure because each document in these subcollections contains the denormalized `farmMembers` map. The rules then verify `request.auth.uid in resource.data.farmMembers`, ensuring that only authorized users can list or access documents within that farm's subcollections. This allows for efficient client-side filtering combined with robust server-side authorization.\n3.  **Global/Public Data:** Collections like `/suppliers` and `/publicAlerts` are designed for broad readability by authenticated users (`allow read: if request.auth != null;`). This allows users to perform `list` operations on the entire collection. Further filtering (e.g., by location for suppliers, by region for public alerts) is expected to occur client-side. The security rules here are not designed to filter content but to define the baseline access permissions for the collection, supporting QAPs by allowing full listing to authorized clients."
+  }
+}
