@@ -1,19 +1,29 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { genkit } from 'genkit';
+import { groq, llama33x70bVersatile } from 'genkitx-groq';
 
+const platformApiKey = process.env.GROQ_API_KEY?.trim();
+
+if (!platformApiKey) {
+  throw new Error('GROQ_API_KEY env var is missing! Please check your .env file and RESTART the server.');
+}
+
+// 1. Initialize the shared Genkit instance with the official model constant
 export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-2.5-flash',
+  plugins: [groq({ apiKey: platformApiKey })],
+  model: llama33x70bVersatile,
 });
 
 /**
- * Helper to get a Genkit instance configured with a specific API key.
- * If no key is provided, it falls back to the default instance.
+ * 2. Helper to get AI instance with a specific key.
  */
 export function getAiWithKey(apiKey?: string) {
-  if (!apiKey) return ai;
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+    return ai;
+  }
+
+  const trimmedKey = apiKey.trim();
   return genkit({
-    plugins: [googleAI({ apiKey })],
-    model: 'googleai/gemini-2.5-flash',
+    plugins: [groq({ apiKey: trimmedKey })],
+    model: llama33x70bVersatile,
   });
 }

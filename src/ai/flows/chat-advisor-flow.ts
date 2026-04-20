@@ -3,41 +3,41 @@
  * @fileOverview A Genkit flow for an AI farmer copilot assistant.
  */
 
-import {ai, getAiWithKey} from '@/ai/genkit';
-import {z} from 'genkit';
+import { getAiWithKey } from '@/ai/genkit';
 import { getRegionalContext } from '@/lib/localization';
 
-const ChatAdvisorInputSchema = z.object({
-  userQuestion: z.string().describe("The farmer's question about farming practices."),
-  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
-  apiKey: z.string().optional().describe("User's own Gemini API key.")
-});
-export type ChatAdvisorInput = z.infer<typeof ChatAdvisorInputSchema>;
+export type ChatAdvisorInput = {
+  userQuestion: string;
+  countryCode?: string;
+  apiKey?: string;
+};
 
-const ChatAdvisorOutputSchema = z.object({
-  advice: z.string().describe("Actionable advice provided by the AI assistant.")
-});
-export type ChatAdvisorOutput = z.infer<typeof ChatAdvisorOutputSchema>;
+export type ChatAdvisorOutput = {
+  advice: string;
+};
 
 export async function chatAdvisor(input: ChatAdvisorInput): Promise<ChatAdvisorOutput> {
   const aiInstance = getAiWithKey(input.apiKey);
   const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
-  
-  const {output} = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
-    prompt: `You are an intelligent AI agricultural expert specializing in ${countryName}. 
-    
-The user is a farmer in ${countryName}. 
-ACTUAL TASK:
-1. Provide specific, grounded, and helpful advice. 
-2. If the question is about regulations, subsidies, or government focus, USE YOUR SEARCH TOOL to find the latest announcements in ${countryName}.
-3. Mention how the ${leaderTitle} of ${countryName}'s focus on food security affects this issue.
 
-Question: ${input.userQuestion}`,
-    config: {
-      googleSearchRetrieval: {}
-    } as any,
-    output: {schema: ChatAdvisorOutputSchema}
-  });
-  return output!;
+  try {
+    const { text } = await aiInstance.generate({
+      prompt: `You are TUAI Copilot, an expert AI agricultural advisor for ${countryName}.
+      
+STRICT SCOPE & RULES:
+1. TOPIC: Only answer questions related to agriculture, farming, crops, livestock, pests, soil, and ${countryName}'s agricultural policies. 
+2. OFF-TOPIC: If the user asks about anything else (movies, sports, general tech, etc.), politely refuse and say: "I am specialized only in helping you with your farm and crops. How can I help you today?"
+3. FORMATTING: Use only plain, clean text. DO NOT use markdown bolding (**), italics (_), or headers (#). 
+4. TONE: Helpful and practical for a farmer.
+
+User Question: ${input.userQuestion}`,
+    });
+
+    const cleanText = (text || 'I could not generate a response.').replace(/\*\*/g, '').replace(/###/g, '').replace(/##/g, '');
+
+    return { advice: cleanText };
+  } catch (error) {
+    console.error("GENKIT CHAT FLOW ERROR:", error);
+    throw error;
+  }
 }

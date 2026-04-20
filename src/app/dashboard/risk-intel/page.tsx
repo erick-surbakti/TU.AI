@@ -36,7 +36,7 @@ const INTEL_POOL: RiskIntelOutput[] = [
 
 export default function RiskIntelPage() {
   const supabase = createClient()
-  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
 
   const [intel, setIntel] = React.useState<RiskIntelOutput>(INTEL_POOL[0])
@@ -48,7 +48,7 @@ export default function RiskIntelPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single().then(({ data }) => {
-          if (data?.geminiApiKey) setGeminiKey(data.geminiApiKey)
+          if (data?.geminiApiKey) setGroqKey(data.geminiApiKey)
           if (data?.countryCode) setCountryCode(data.countryCode)
         })
       }
@@ -58,13 +58,16 @@ export default function RiskIntelPage() {
     const index = day % INTEL_POOL.length
     setIntel(INTEL_POOL[index])
   }, [])
+  
+  const fallbackKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+  const activeKey = groqKey || fallbackKey
 
   const fetchIntel = async () => {
-    if (!geminiKey) {
+    if (!activeKey) {
       toast({
         variant: "destructive",
         title: "API Key Required",
-        description: "Add your Gemini key in Settings to run scans."
+        description: "Add your Groq key in Settings to run scans."
       })
       return
     }
@@ -78,7 +81,7 @@ export default function RiskIntelPage() {
         commodityPrices: { "Fertilizer (NPK)": 820, "Diesel": 2.15 },
         exportImportBans: ["Regional Rice Export Ban"],
         policyUpdates: "New federal subsidy updates for agriculture.",
-        apiKey: geminiKey
+        apiKey: activeKey
       })
       setIntel(data)
       toast({ title: "Risk Scan Complete" })
@@ -119,12 +122,12 @@ export default function RiskIntelPage() {
         </Button>
       </div>
 
-      {!geminiKey && (
+      {!groqKey && !process.env.NEXT_PUBLIC_GROQ_API_KEY && (
         <Alert variant="default" className="bg-orange-50 border-orange-100 rounded-2xl shadow-sm">
           <AlertCircle className="h-5 w-5 text-orange-600" />
           <AlertTitle className="text-orange-900 font-bold">API Key Awareness</AlertTitle>
           <AlertDescription className="text-orange-800 text-xs">
-            To use live risk scanning beyond the daily rotation, add your own Gemini API key in <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>.
+            To use live risk scanning beyond the daily rotation, add your own Groq API key in <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>.
           </AlertDescription>
         </Alert>
       )}

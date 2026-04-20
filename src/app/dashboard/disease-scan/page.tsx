@@ -17,7 +17,7 @@ export default function DiseaseScanPage() {
   const { toast } = useToast()
 
   const [user, setUser] = React.useState<any>(null)
-  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [scanHistory, setScanHistory] = React.useState<any[]>([])
 
   const [image, setImage] = React.useState<string | null>(null)
@@ -32,7 +32,7 @@ export default function DiseaseScanPage() {
       if (user) {
         setUser(user)
         const { data: profile } = await supabase.from('users').select('geminiApiKey').eq('id', user.id).single()
-        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        if (profile?.geminiApiKey) setGroqKey(profile.geminiApiKey)
         
         const { data: history } = await supabase.from('crop_scan_results').select('*').eq('user_id', user.id).order('scanDate', { ascending: false }).limit(5)
         if (history) setScanHistory(history)
@@ -40,6 +40,9 @@ export default function DiseaseScanPage() {
     }
     init()
   }, [])
+
+  const fallbackKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+  const activeKey = groqKey || fallbackKey
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -51,11 +54,11 @@ export default function DiseaseScanPage() {
   }
 
   const handleScan = async () => {
-    if (!image || !user || !geminiKey) {
+    if (!image || !user || !activeKey) {
       toast({
         variant: "destructive",
         title: "Incomplete Setup",
-        description: !geminiKey ? "Add your Gemini API Key in Settings." : "Upload an image.",
+        description: !activeKey ? "Add your Groq API Key in Settings." : "Upload an image.",
       })
       return
     }
@@ -67,7 +70,7 @@ export default function DiseaseScanPage() {
       const output = await scanCrop({
         photoDataUri: image,
         description: description || "Analyzing crop health...",
-        apiKey: geminiKey
+        apiKey: activeKey
       })
       setResult(output)
 
@@ -96,15 +99,15 @@ export default function DiseaseScanPage() {
     <div className="max-w-6xl mx-auto space-y-8 pb-24 md:pb-8">
       <div className="space-y-2 px-1">
         <h2 className="text-3xl font-headline font-bold text-primary">Crop Disease Intelligence</h2>
-        <p className="text-sm text-muted-foreground font-medium">Use your Gemini key for instant AI diagnosis.</p>
+        <p className="text-sm text-muted-foreground font-medium">Use your Groq key for instant AI diagnosis.</p>
       </div>
 
-      {!geminiKey && (
+      {!groqKey && !process.env.NEXT_PUBLIC_GROQ_API_KEY && (
         <Alert variant="default" className="bg-orange-100 border-none rounded-[2rem] p-6 shadow-sm mx-1">
           <AlertCircle className="h-5 w-5 text-orange-600" />
           <AlertTitle className="text-orange-900 font-bold text-lg">API Key Required</AlertTitle>
           <AlertDescription className="text-orange-800 text-sm mt-1">
-            To prevent system overload, users must provide their own Gemini API Key. Go to <Link href="/dashboard/settings" className="underline font-bold">Settings</Link> to add yours.
+            To prevent system overload, users must provide their own Groq API Key. Go to <Link href="/dashboard/settings" className="underline font-bold">Settings</Link> to add yours.
           </AlertDescription>
         </Alert>
       )}
@@ -138,7 +141,7 @@ export default function DiseaseScanPage() {
               <Button 
                 className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg active:scale-95 transition-transform disabled:opacity-50"
                 onClick={handleScan}
-                disabled={isAnalyzing || !image || !geminiKey}
+                disabled={isAnalyzing || !image || !activeKey}
               >
                 {isAnalyzing ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing...</> : "Start Diagnosis"}
               </Button>

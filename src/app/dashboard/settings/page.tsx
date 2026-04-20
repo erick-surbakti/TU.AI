@@ -70,14 +70,18 @@ export default function SettingsPage() {
     setVerificationStatus('verifying')
     
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`)
+      const response = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: {
+          "Authorization": `Bearer ${apiKey.trim()}`
+        }
+      })
       const data = await response.json()
       
       if (response.ok) {
         setVerificationStatus('valid')
         toast({
           title: "Key Verified",
-          description: "Your Gemini API key is valid and ready to use.",
+          description: "Your Groq API key is valid and ready to use.",
         })
       } else {
         setVerificationStatus('invalid')
@@ -92,7 +96,7 @@ export default function SettingsPage() {
       toast({
         variant: "destructive",
         title: "Verification Failed",
-        description: "Could not connect to Gemini API. Please check your internet.",
+        description: "Could not connect to Groq API. Please check your internet.",
       })
     } finally {
       setIsVerifying(false)
@@ -119,7 +123,7 @@ export default function SettingsPage() {
 
       toast({
         title: "Settings Saved",
-        description: "Your Gemini API key is now active for all features.",
+        description: "Your Groq API key is now active for all features.",
       })
     } catch (error: any) {
       console.error("Supabase Settings Save Error:", error)
@@ -152,7 +156,7 @@ export default function SettingsPage() {
           System Preferences
         </div>
         <h2 className="text-3xl md:text-4xl font-headline font-bold text-slate-900 leading-tight">Settings</h2>
-        <p className="text-sm text-muted-foreground font-medium">Manage your personal Gemini AI integration and account details.</p>
+        <p className="text-sm text-muted-foreground font-medium">Manage your personal Groq AI integration and account details.</p>
       </div>
 
       <div className="grid gap-8">
@@ -173,18 +177,18 @@ export default function SettingsPage() {
               <Sparkles className="h-5 w-5 text-emerald-600" />
               <AlertTitle className="text-emerald-900 font-bold text-base">Token Responsibility</AlertTitle>
               <AlertDescription className="text-emerald-800 text-xs leading-relaxed mt-1">
-                To keep TUAI free for all, you provide your own Gemini API key. All AI features (Pathfinder, Scans, Chat) will consume tokens from your personal quota.
+                To keep TUAI free for all, AI features (Pathfinder, Scans, Farm Audit) use your own Groq API key. The <span className="font-bold">Copilot chatbot is always free</span> and powered by TUAI.
               </AlertDescription>
             </Alert>
 
             <div className="space-y-4">
-              <Label htmlFor="geminiKey" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Gemini API Key</Label>
+              <Label htmlFor="groqKey" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Groq API Key</Label>
               <div className="relative group">
                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
                 <Input 
-                  id="geminiKey"
+                  id="groqKey"
                   type="password"
-                  placeholder="Paste your key here (starts with AIza...)"
+                  placeholder="Paste your key here (starts with gsk_...)"
                   value={apiKey}
                   onChange={(e) => {
                     setApiKey(e.target.value)
@@ -251,7 +255,7 @@ export default function SettingsPage() {
              </div>
               <Button 
                 onClick={handleSave} 
-                disabled={isSaving || !apiKey.trim() || verificationStatus !== 'valid'}
+                disabled={isSaving || !apiKey.trim()}
                 className="w-full md:w-auto h-14 rounded-2xl bg-primary text-white font-bold px-12 shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
               >
                 {isSaving ? <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Syncing...</> : <><Save className="h-5 w-5 mr-2" /> Save Changes</>}

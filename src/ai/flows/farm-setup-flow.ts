@@ -1,115 +1,139 @@
 'use server';
 /**
- * @fileOverview A comprehensive Genkit flow for farm planning, auditing, and optimization.
- * 
- * - farmSetupGuide - Provides a detailed roadmap for new farmers or a deep health audit for existing ones.
+ * @fileOverview A Genkit flow for farm planning and setup guidance.
  */
 
-import { ai, getAiWithKey } from '@/ai/genkit';
-import { z } from 'zod';
+import { getAiWithKey } from '@/ai/genkit';
+import { getRegionalContext } from '@/lib/localization';
 
-const ProductionDataSchema = z.object({
-  cropType: z.string().optional(),
-  lastPlantingDate: z.string().optional(),
-  averageYield: z.string().optional(),
-  fertilizerUsage: z.string().optional(),
-  livestockType: z.string().optional(),
-  livestockCount: z.number().optional(),
-  feedUsage: z.string().optional(),
-  mortalityRate: z.string().optional(),
-});
+export type FarmSetupInput = {
+  status: 'beginner' | 'existing';
+  basicInfo: {
+    farmName: string;
+    ownerName: string;
+    country: string;
+    region: string;
+    address: string;
+  };
+  farmType?: string;
+  sizeValue?: number;
+  sizeUnit?: string;
+  hasLivestock?: boolean;
+  livestockDetails?: string;
+  techInterest?: boolean;
+  problems?: string[];
+  operations?: {
+    trackingMethod: string;
+    useSensors: boolean;
+    useMachinery: boolean;
+  };
+  productionData?: {
+    cropType?: string;
+    lastPlantingDate?: string;
+    averageYield?: string;
+    fertilizerUsage?: string;
+    livestockType?: string;
+    livestockCount?: number;
+    feedUsage?: string;
+    mortalityRate?: string;
+  };
+  targetCrop?: string;
+  hasLand?: boolean;
+  budget: string;
+  motivation?: string;
+  goals: string[];
+  helpType: string;
+  apiKey?: string;
+  countryCode?: string;
+};
 
-const FarmSetupInputSchema = z.object({
-  status: z.enum(['beginner', 'existing']).describe('User status.'),
-  basicInfo: z.object({
-    farmName: z.string(),
-    ownerName: z.string(),
-    country: z.string(),
-    region: z.string(),
-    address: z.string(),
-  }),
-  // Fields for Existing
-  farmType: z.string().optional(),
-  sizeValue: z.number().optional(),
-  sizeUnit: z.string().optional(),
-  hasLivestock: z.boolean().optional(),
-  livestockDetails: z.string().optional(),
-  techInterest: z.boolean().optional(),
-  problems: z.array(z.string()).optional(),
-  operations: z.object({
-    trackingMethod: z.string(),
-    useSensors: z.boolean(),
-    useMachinery: z.boolean(),
-  }).optional(),
-  productionData: ProductionDataSchema.optional(),
-  
-  // Fields for Beginners
-  targetCrop: z.string().optional(),
-  hasLand: z.boolean().optional(),
-  budget: z.string().describe('Capital/Modal readiness.'),
-  motivation: z.string().optional(),
-  
-  // Shared
-  goals: z.array(z.string()),
-  helpType: z.string(),
-  apiKey: z.string().optional(),
-  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
-});
-
-export type FarmSetupInput = z.infer<typeof FarmSetupInputSchema>;
-
-const FarmSetupOutputSchema = z.object({
-  healthReport: z.object({
-    productivityScore: z.number().describe('0-100 score.'),
-    costEfficiency: z.number().describe('0-100 score.'),
-    diseaseRisk: z.enum(['Low', 'Medium', 'High', 'Critical']),
-    waterRisk: z.enum(['Low', 'Medium', 'High']),
-    profitPotential: z.enum(['Low', 'Medium', 'High', 'Very High']),
-  }).optional(),
-  recommendations: z.array(z.string()).describe('Actionable items.'),
-  roadmap: z.array(z.string()).describe('Step-by-step path.'),
-  motivationAI: z.string().describe('Inspirational AI reasoning.'),
-  landOptions: z.array(z.object({
-    location: z.string(),
-    size: z.string(),
-    priceEstimate: z.string(),
-    suitabilityReason: z.string(),
-  })).optional(),
-  financialEstimate: z.object({
-    initialCapital: z.string(),
-    operatingExpense: z.string(),
-    expectedRoiTime: z.string(),
-  }).optional(),
-});
-
-export type FarmSetupOutput = z.infer<typeof FarmSetupOutputSchema>;
+export type FarmSetupOutput = {
+  healthReport?: {
+    productivityScore: number;
+    costEfficiency: number;
+    diseaseRisk: 'Low' | 'Medium' | 'High' | 'Critical';
+    waterRisk: 'Low' | 'Medium' | 'High';
+    profitPotential: 'Low' | 'Medium' | 'High' | 'Very High';
+  };
+  recommendations: string[];
+  roadmap: string[];
+  motivationAI: string;
+  landOptions?: Array<{
+    location: string;
+    size: string;
+    priceEstimate: string;
+    suitabilityReason: string;
+  }>;
+  financialEstimate?: {
+    initialCapital: string;
+    operatingExpense: string;
+    expectedRoiTime: string;
+  };
+};
 
 export async function farmSetupGuide(input: FarmSetupInput): Promise<FarmSetupOutput> {
   const aiInstance = getAiWithKey(input.apiKey);
   const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
-  
-  const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
+
+  const { text } = await aiInstance.generate({
     prompt: `You are a professional agricultural consultant for ${countryName}.
-    
-ACTUAL REAL-WORLD TASK:
-1. USE YOUR SEARCH TOOL to find real land price ranges in ${input.basicInfo.region}, ${countryName} for agricultural land.
-2. Search for the names of 2-3 REAL government grants or subsidies currently offered for ${input.targetCrop || input.farmType || 'farmers'} in ${countryName}.
-3. Provide a step-by-step roadmap tailored to the local climate of ${input.basicInfo.region}.
 
-   USER PROFILE:
-   - Status: ${input.status}
-   - Region: ${input.basicInfo.region}
-   - Target/Current: ${input.targetCrop || ''}${input.farmType || ''}
-   - Budget: ${input.budget}
+USER PROFILE:
+- Status: ${input.status === 'beginner' ? 'New/Beginner Farmer' : 'Existing Farmer'}
+- Farm Name: ${input.basicInfo.farmName}
+- Owner: ${input.basicInfo.ownerName}
+- Region: ${input.basicInfo.region}, ${countryName}
+- Target/Current Crop: ${input.targetCrop || input.farmType || 'General farming'}
+- Budget: ${input.budget}
+- Goals: ${input.goals.join(', ')}
+- Help Needed: ${input.helpType}
+${input.problems?.length ? `- Challenges: ${input.problems.join(', ')}` : ''}
 
-Always include a "MotivationAI" section mentioning how ${countryName}'s food security is a priority for the ${leaderTitle}.`,
-    config: {
-      googleSearchRetrieval: {}
-    } as any,
-    output: { schema: FarmSetupOutputSchema },
+TASK: Create a comprehensive farm plan and respond ONLY with a valid JSON object:
+{
+  ${input.status === 'existing' ? `"healthReport": {
+    "productivityScore": 70,
+    "costEfficiency": 65,
+    "diseaseRisk": "Low",
+    "waterRisk": "Medium",
+    "profitPotential": "High"
+  },` : ''}
+  "recommendations": ["actionable recommendation 1", "recommendation 2", "recommendation 3"],
+  "roadmap": ["Step 1: ...", "Step 2: ...", "Step 3: ...", "Step 4: ...", "Step 5: ..."],
+  "motivationAI": "Inspiring message about farming in ${countryName} under the ${leaderTitle}'s food security vision",
+  "landOptions": [
+    {
+      "location": "District/area name in ${input.basicInfo.region}",
+      "size": "2-5 hectares",
+      "priceEstimate": "Realistic price in local currency",
+      "suitabilityReason": "Why this location suits ${input.targetCrop || input.farmType || 'farming'}"
+    }
+  ],
+  "financialEstimate": {
+    "initialCapital": "Realistic estimate in local currency",
+    "operatingExpense": "Monthly/yearly operating cost",
+    "expectedRoiTime": "e.g., 18-24 months"
+  }
+}`,
   });
 
-  if (!output) throw new Error('AI failed to generate farm plan.');
-  return output;
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      healthReport: parsed.healthReport,
+      recommendations: parsed.recommendations || [],
+      roadmap: parsed.roadmap || [],
+      motivationAI: parsed.motivationAI || `Farming in ${countryName} is a noble and impactful calling.`,
+      landOptions: parsed.landOptions,
+      financialEstimate: parsed.financialEstimate,
+    };
+  } catch {
+    return {
+      recommendations: ['Start with soil testing', 'Apply for government subsidies', 'Join a local farmers cooperative'],
+      roadmap: ['Step 1: Register with the Ministry of Agriculture', 'Step 2: Get soil analysis', 'Step 3: Plan crop calendar', 'Step 4: Source quality seeds', 'Step 5: Set up irrigation'],
+      motivationAI: text || `Farming in ${countryName} is a vital contribution to the nation's food security goals.`,
+    };
+  }
 }

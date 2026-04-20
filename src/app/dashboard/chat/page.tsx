@@ -16,14 +16,14 @@ type Message = {
 }
 
 export default function ChatAdvisorPage() {
-  const fallbackKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+  const fallbackKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
 
   const [messages, setMessages] = React.useState<Message[]>([
     { role: "assistant", content: "Hello Farmer! I'm your TUAI Copilot. How can I help you with your crops today?" }
   ])
   const [input, setInput] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
-  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
   const [user, setUser] = React.useState<any>(null)
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
@@ -35,20 +35,22 @@ export default function ChatAdvisorPage() {
       if (user) {
         setUser(user)
         const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
-        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        if (profile?.geminiApiKey) setGroqKey(profile.geminiApiKey)
         if (profile?.countryCode) setCountryCode(profile.countryCode)
       }
     }
     init()
   }, [])
 
+  const activeKey = groqKey || fallbackKey
+
   const handleSend = async () => {
     const userMsg = input.trim()
     setInput("")
 
-    if (!geminiKey) {
+    if (!activeKey) {
       setMessages(prev => [...prev, { role: "user", content: userMsg }])
-      setMessages(prev => [...prev, { role: "assistant", content: "I need your Gemini API Key to chat. Please add it in Settings." }])
+      setMessages(prev => [...prev, { role: "assistant", content: "The AI service is currently unavailable. Please try again later." }])
       return
     }
 
@@ -56,10 +58,10 @@ export default function ChatAdvisorPage() {
     setIsLoading(true)
 
     try {
-      const response = await chatAdvisor({ userQuestion: userMsg, apiKey: geminiKey, countryCode: countryCode })
+      const response = await chatAdvisor({ userQuestion: userMsg, apiKey: activeKey, countryCode: countryCode })
       setMessages(prev => [...prev, { role: "assistant", content: response.advice }])
     } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting. Ensure your API key is correct in Settings." }])
+      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting. Please try again in a moment." }])
     } finally {
       setIsLoading(false)
     }
@@ -84,19 +86,18 @@ export default function ChatAdvisorPage() {
           </div>
           <div>
             <h2 className="text-lg md:text-xl font-headline font-bold leading-tight">TUAI Copilot</h2>
-            <p className="text-primary-foreground/70 text-[10px] md:text-xs">Powered by your Gemini key</p>
+            <p className="text-primary-foreground/70 text-[10px] md:text-xs">Powered by your Groq key</p>
           </div>
         </div>
       </div>
 
-      {!geminiKey && (
+      {!activeKey && (
         <div className="p-4 bg-orange-50 border-b border-orange-100">
            <Alert variant="default" className="bg-orange-100 border-none rounded-2xl">
               <AlertCircle className="h-4 w-4 text-orange-600" />
               <AlertTitle className="text-orange-900 font-bold">Bot Offline</AlertTitle>
               <AlertDescription className="text-orange-800 text-xs">
-                Your Gemini API Key is not configured. 
-                <Link href="/dashboard/settings" className="ml-1 underline">Setup Key →</Link>
+                The AI service is temporarily unavailable. Please try again later.
               </AlertDescription>
            </Alert>
         </div>
@@ -137,16 +138,16 @@ export default function ChatAdvisorPage() {
       <div className="p-4 md:p-6 border-t bg-white shrink-0">
         <div className="flex gap-2 md:gap-4">
           <Input 
-            placeholder={(geminiKey || fallbackKey) ? "Ask your question..." : "Bot offline..."}
+            placeholder={activeKey ? "Ask your question..." : "Bot offline..."}
             value={input}
-            disabled={!(geminiKey || fallbackKey)}
+            disabled={!activeKey}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             className="flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 border-none shadow-inner text-sm"
           />
           <Button 
             onClick={handleSend}
-            disabled={isLoading || !input.trim() || !(geminiKey || fallbackKey)}
+            disabled={isLoading || !input.trim() || !activeKey}
             className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-primary text-white shadow-lg active:scale-95 transition-transform"
           >
             <Send className="h-5 w-5" />

@@ -339,18 +339,19 @@ export default function RecordsPage() {
                 <div className="h-20 w-20 rounded-[2rem] bg-white flex items-center justify-center shadow-lg mx-auto">
                   <Users className="h-10 w-10 text-slate-200" />
                 </div>
-                 <div className="space-y-4">
-                    <h4 className="text-xl font-bold text-slate-500">Investor Readiness Form Required</h4>
-                    <p className="text-sm text-slate-400">You must complete the official investor readiness form and run a Farm Audit to unlock the strategic matchmaking engine.</p>
-                 </div>
-                 <Button 
-                   asChild
-                   className="rounded-2xl h-14 px-10 font-bold bg-primary shadow-lg active:scale-95 transition-transform"
-                 >
-                   <a href="https://tuai-form.vercel.app" target="_blank" rel="noopener noreferrer">
-                     Fill Investor Form <ArrowRight className="h-4 w-4 ml-2" />
-                   </a>
-                 </Button>
+                <div className="space-y-2">
+                  <h4 className="text-xl font-bold text-slate-500">No Readiness Data Available</h4>
+                  <p className="text-sm text-slate-400">You must run a Farm Audit first to unlock the Investor Matchmaking engine.</p>
+                </div>
+                <Button
+                  onClick={() => {
+                    const tabTrigger = document.querySelector('[value="audit"]') as HTMLElement
+                    tabTrigger?.click()
+                  }}
+                  className="rounded-2xl h-14 px-10 font-bold bg-primary"
+                >
+                  Go to
+                </Button>
               </Card>
             ) : (
               <div className="grid gap-6">

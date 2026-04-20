@@ -1,59 +1,66 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for analyzing supply chain risks and providing preventative actions to farmers.
- *
- * - riskIntel - A function that handles the supply chain risk analysis process.
- * - RiskIntelInput - The input type for the riskIntel function.
- * - RiskIntelOutput - The return type for the riskIntel function.
+ * @fileOverview A Genkit flow for analyzing supply chain risks.
  */
 
-import { ai, getAiWithKey } from '@/ai/genkit';
-import { z } from 'genkit';
+import { getAiWithKey } from '@/ai/genkit';
 import { getRegionalContext } from '@/lib/localization';
 
-const RiskIntelInputSchema = z.object({
-  region: z.string().describe('The specific geographic region for which the risk analysis is performed (e.g., "Malaysia").'),
-  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
-  newsSummary: z.string().describe('A summary of recent global news, including geopolitical events, conflicts, and trade policy changes relevant to agricultural supply chains.'),
-  commodityPrices: z.record(z.string(), z.number()).describe('A dictionary of current commodity prices relevant to farming (e.g., {"fertilizer": 750, "diesel": 1.20}).'),
-  exportImportBans: z.array(z.string()).describe('A list of reported export or import bans on agricultural goods or inputs.'),
-  policyUpdates: z.string().describe('Summarized updates on relevant government agricultural policies, subsidies, or regulations.'),
-  apiKey: z.string().optional().describe("User's own Gemini API key.")
-});
-export type RiskIntelInput = z.infer<typeof RiskIntelInputSchema>;
+export type RiskIntelInput = {
+  region: string;
+  countryCode?: string;
+  newsSummary: string;
+  commodityPrices: Record<string, number>;
+  exportImportBans: string[];
+  policyUpdates: string;
+  apiKey?: string;
+};
 
-const RiskIntelOutputSchema = z.object({
-  alertLevel: z.enum(['Low', 'Medium', 'High', 'Critical']).describe('The overall alert level indicating the severity of the supply chain risk.'),
-  potentialImpactSummary: z.string().describe('A summary of how the identified risks could potentially impact farming operations in the specified region.'),
-  recommendedActions: z.array(z.string()).describe('A list of specific, actionable steps farmers can take to mitigate the identified risks.'),
-  groundingProof: z.string().optional().describe('A brief mention of the real-world event found via search that justifies this risk level.'),
-});
-export type RiskIntelOutput = z.infer<typeof RiskIntelOutputSchema>;
+export type RiskIntelOutput = {
+  alertLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  potentialImpactSummary: string;
+  recommendedActions: string[];
+  groundingProof?: string;
+};
 
 export async function riskIntel(input: RiskIntelInput): Promise<RiskIntelOutput> {
   const aiInstance = getAiWithKey(input.apiKey);
   const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
 
-  const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
+  const { text } = await aiInstance.generate({
     prompt: `You are an expert agricultural supply chain risk advisor for ${countryName}.
-    
-ACTUAL TASK:
-1. USE YOUR SEARCH TOOL to find any REAL and RECENT geopolitical or trade news (last 7 days) that impacts agricultural costs (fuel, fertilizer, shipping, chemicals) in ${countryName} or the ASEAN region.
-2. Search for the current price trends of urea and diesel in ${countryName}.
-3. Based on REAL FACTS found, determine the alert level.
 
-If you find a specific event (e.g. a new export ban or a specific shipping delay), describe it in 'potentialImpactSummary' and record the specific source/event in 'groundingProof'.
+CONTEXT:
+- News: ${input.newsSummary}
+- Commodity Prices: ${JSON.stringify(input.commodityPrices)}
+- Export/Import Bans: ${input.exportImportBans.join(', ') || 'None reported'}
+- Policy Updates: ${input.policyUpdates}
+- The ${leaderTitle} of ${countryName} is focused on food sovereignty.
 
-Context: The ${leaderTitle} of ${countryName} is focused on food sovereignty.`,
-    config: {
-      googleSearchRetrieval: {}
-    } as any,
-    output: { schema: RiskIntelOutputSchema },
+TASK: Analyze the supply chain risk for farmers in ${countryName} and respond ONLY with a valid JSON object in this exact format:
+{
+  "alertLevel": "Low" | "Medium" | "High" | "Critical",
+  "potentialImpactSummary": "string describing the risk impact",
+  "recommendedActions": ["action1", "action2", "action3"],
+  "groundingProof": "string mentioning key context that justifies the alert level"
+}`,
   });
 
-  if (!output) {
-    throw new Error('Failed to generate supply chain risk intelligence.');
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      alertLevel: parsed.alertLevel || 'Medium',
+      potentialImpactSummary: parsed.potentialImpactSummary || '',
+      recommendedActions: parsed.recommendedActions || [],
+      groundingProof: parsed.groundingProof,
+    };
+  } catch {
+    return {
+      alertLevel: 'Medium',
+      potentialImpactSummary: text || 'Unable to assess risk at this time.',
+      recommendedActions: ['Monitor commodity prices closely', 'Diversify suppliers', 'Review government subsidy programs'],
+    };
   }
-  return output;
 }

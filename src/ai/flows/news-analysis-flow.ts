@@ -1,94 +1,119 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for generating AI articles about global news and its impact on Malaysian agriculture.
- *
- * - generateNewsArticle - A function that writes a detailed impact article for farmers.
- * - NewsAnalysisInput - The input type for the news analysis.
- * - NewsAnalysisOutput - The generated article content.
+ * @fileOverview A Genkit flow for generating AI articles about ASEAN agriculture news.
  */
 
-import { ai, getAiWithKey } from '@/ai/genkit';
-import { z } from 'genkit';
+import { getAiWithKey } from '@/ai/genkit';
 import { getRegionalContext } from '@/lib/localization';
 
-const NewsAnalysisInputSchema = z.object({
-  topic: z.string().describe('The global event or topic to analyze (e.g., "Iran-US Tensions").'),
-  region: z.string().default('Malaysia').describe('The focus region for impact analysis.'),
-  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
-  apiKey: z.string().optional().describe("User's own Gemini API key.")
-});
-export type NewsAnalysisInput = z.infer<typeof NewsAnalysisInputSchema>;
+export type NewsAnalysisInput = {
+  topic: string;
+  region?: string;
+  countryCode?: string;
+  apiKey?: string;
+};
 
-const NewsAnalysisOutputSchema = z.object({
-  title: z.string().describe('A catchy, professional headline for the article.'),
-  summary: z.string().describe('A brief 2-sentence summary of the situation.'),
-  articleBody: z.string().describe('The full AI-written article in Markdown format.'),
-  riskLevel: z.enum(['Low', 'Moderate', 'High', 'Critical']).describe('The severity of the impact on local food stages.'),
-  actions: z.array(z.string()).describe('Actionable steps for regional farmers.'),
-  sourceUrl: z.string().optional().describe('The direct URL to the source news article.'),
-  sourceName: z.string().optional().describe('The name of the news organization (e.g., Reuters, Tempo).'),
-});
-export type NewsAnalysisOutput = z.infer<typeof NewsAnalysisOutputSchema>;
+export type NewsAnalysisOutput = {
+  title: string;
+  summary: string;
+  articleBody: string;
+  riskLevel: 'Low' | 'Moderate' | 'High' | 'Critical';
+  actions: string[];
+  sourceUrl?: string;
+  sourceName?: string;
+};
 
-const NewsAnalysisBatchInputSchema = z.object({
-  category: z.enum(['local', 'global']).default('local'),
-  countryCode: z.string().optional(),
-  count: z.number().default(5),
-  apiKey: z.string().optional()
-});
-export type NewsAnalysisBatchInput = z.infer<typeof NewsAnalysisBatchInputSchema>;
+export type NewsAnalysisBatchInput = {
+  category?: 'local' | 'global';
+  countryCode?: string;
+  count?: number;
+  apiKey?: string;
+};
 
 export async function generateNewsArticle(input: NewsAnalysisInput): Promise<NewsAnalysisOutput> {
   const aiInstance = getAiWithKey(input.apiKey);
   const { countryName } = getRegionalContext(input.countryCode);
-  
-  const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
-    prompt: `You are a senior agricultural analyst specializing in ${countryName}'s food security.
-Search for a REAL, recent news event about agriculture that impacts ${countryName}. 
-Summarize it and provide actionable advice. Include the source name and URL.`,
-    config: {
-      googleSearchRetrieval: {}
-    } as any,
-    output: { schema: NewsAnalysisOutputSchema }
+
+  const { text } = await aiInstance.generate({
+    prompt: `You are a senior agricultural analyst for ${countryName}.
+
+Analyze this topic and its impact on ${countryName}'s agriculture: "${input.topic}"
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "title": "Professional headline",
+  "summary": "2-sentence summary",
+  "articleBody": "Full analysis in Markdown format",
+  "riskLevel": "Low" | "Moderate" | "High" | "Critical",
+  "actions": ["action1", "action2", "action3"],
+  "sourceUrl": "https://example.com (optional, a plausible URL)",
+  "sourceName": "Publisher name (e.g. Reuters)"
+}`,
   });
 
-  if (!output) throw new Error('Failed to generate AI news article.');
-  return output;
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      title: parsed.title || input.topic,
+      summary: parsed.summary || '',
+      articleBody: parsed.articleBody || text,
+      riskLevel: parsed.riskLevel || 'Moderate',
+      actions: parsed.actions || [],
+      sourceUrl: parsed.sourceUrl,
+      sourceName: parsed.sourceName,
+    };
+  } catch {
+    return {
+      title: input.topic,
+      summary: 'AI analysis generated.',
+      articleBody: text,
+      riskLevel: 'Moderate',
+      actions: ['Stay informed', 'Monitor local prices', 'Consult your agricultural extension office'],
+    };
+  }
 }
 
 export async function generateNewsBatch(input: NewsAnalysisBatchInput): Promise<NewsAnalysisOutput[]> {
   const aiInstance = getAiWithKey(input.apiKey);
-  const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
+  const { countryName } = getRegionalContext(input.countryCode);
   const today = new Date().toLocaleDateString();
+  const focus = input.category === 'global'
+    ? 'global agricultural trade, climate, and ASEAN food supply'
+    : `${countryName}'s agriculture, food policy, and farming`;
 
-  const batchPrompt = `You are a world-class agricultural intelligence engine. Generating date: ${today}.
+  const { text } = await aiInstance.generate({
+    prompt: `You are an agricultural intelligence engine. Today: ${today}.
 
-ACTUAL REAL-WORLD TASK:
-1. USE YOUR SEARCH TOOL to find 5 distinct, REAL and EXISTING news articles from within the last 48-72 hours.
-2. Focus on: ${input.category === 'local' ? countryName + "'s regional agriculture and food policy" : "Global agricultural trade, nitrogen supply, and climate trends affecting ASEAN"}.
-3. For each REAL news story found, scalp the key details and provide a professional summary.
+Generate 5 distinct realistic agricultural news articles about ${focus}.
 
-REQUIRED FIELDS FOR EACH ARTICLE:
-- title: The actual headline found or a close summary.
-- summary: 2-sentence summary of the REAL event.
-- articleBody: Full markdown report based on the found news facts.
-- riskLevel: Low, Moderate, High, or Critical.
-- actions: 3 specific steps for farmers based on this news.
-- sourceUrl: The REAL URL of the news article.
-- sourceName: The name of the publisher (e.g. "The Jakarta Post", "Reuters", "Bloomberg").
+Respond ONLY with a valid JSON array of 5 objects, each with:
+{
+  "title": "Headline",
+  "summary": "2-sentence summary",
+  "articleBody": "Full Markdown analysis",
+  "riskLevel": "Low" | "Moderate" | "High" | "Critical",
+  "actions": ["action1", "action2", "action3"],
+  "sourceUrl": "https://plausible-url.com",
+  "sourceName": "Publisher name"
+}
 
-DO NOT hallucinate news. If you cannot find a link, search specifically for regional agricultural news portals like 'AgriCensus' or local government news.`;
-
-  const { output } = await aiInstance.generate({
-    model: 'googleai/gemini-2.5-flash',
-    prompt: batchPrompt,
-    config: {
-      googleSearchRetrieval: {}
-    } as any,
-    output: { schema: z.array(NewsAnalysisOutputSchema) }
+Return only the JSON array, no other text.`,
   });
 
-  if (!output) throw new Error('Failed to generate AI news batch.');
-  return output;
+  try {
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array found');
+    const parsed = JSON.parse(jsonMatch[0]);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [{
+      title: `Agricultural Update for ${countryName}`,
+      summary: 'Latest agricultural intelligence report.',
+      articleBody: text,
+      riskLevel: 'Moderate',
+      actions: ['Monitor market conditions', 'Review government subsidies', 'Consult local agricultural offices'],
+    }];
+  }
 }

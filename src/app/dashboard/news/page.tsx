@@ -66,7 +66,7 @@ export default function NewsPage() {
   const supabase = createClient()
   const { toast } = useToast()
   
-  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
   const [localArticles, setLocalArticles] = React.useState<NewsAnalysisOutput[]>([])
   const [globalArticles, setGlobalArticles] = React.useState<NewsAnalysisOutput[]>([])
@@ -85,7 +85,7 @@ export default function NewsPage() {
         const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
         if (profile?.geminiApiKey) {
           currentKey = profile.geminiApiKey
-          setGeminiKey(currentKey)
+          setGroqKey(currentKey)
         }
         if (profile?.countryCode) {
           currentCountry = profile.countryCode
@@ -123,11 +123,12 @@ export default function NewsPage() {
   }
 
   const handleRefresh = async (category: 'local' | 'global') => {
-    if (!geminiKey) {
+    const activeKey = groqKey || process.env.NEXT_PUBLIC_GROQ_API_KEY
+    if (!activeKey) {
       toast({
         variant: "destructive",
         title: "API Key Required",
-        description: "Add your Gemini key in Settings to generate fresh AI intelligence."
+        description: "Add your Groq key in Settings to generate fresh AI intelligence."
       })
       return
     }
@@ -140,7 +141,7 @@ export default function NewsPage() {
         category,
         countryCode,
         count: 5,
-        apiKey: geminiKey
+        apiKey: activeKey
       })
 
       if (category === 'local') {
@@ -237,12 +238,12 @@ export default function NewsPage() {
         </div>
       </div>
 
-      {!geminiKey && (
+      {!groqKey && !process.env.NEXT_PUBLIC_GROQ_API_KEY && (
         <Alert className="bg-orange-50 border-orange-100 rounded-[2rem] shadow-sm p-6">
           <AlertCircle className="h-5 w-5 text-orange-600" />
           <AlertTitle className="text-orange-900 font-bold ml-2">Self-Provided Intelligence</AlertTitle>
           <AlertDescription className="text-orange-800 text-xs ml-2 leading-relaxed">
-            To unlock daily automated news generation, please add your **Gemini API Key** in your <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>. 
+            To unlock daily automated news generation, please add your **Groq API Key** in your <Link href="/dashboard/settings" className="underline font-bold">Settings</Link>. 
             Static intelligence is shown as a fallback.
           </AlertDescription>
         </Alert>

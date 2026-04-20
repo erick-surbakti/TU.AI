@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, MapPin, Phone, Navigation, Loader2, Info, Navigation2, Sparkles } from "lucide-react"
+import { Search, MapPin, Phone, Navigation, Loader2, Info, Navigation2, Sparkles, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/supabase/client"
 import { ASEAN_COUNTRIES } from "@/lib/localization"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 
 export default function SuppliersPage() {
@@ -20,7 +21,7 @@ export default function SuppliersPage() {
   const [results, setResults] = React.useState<SupplierFinderOutput | null>(null)
   const [location, setLocation] = React.useState<{lat: number, lng: number} | null>(null)
   const [locationLoading, setLocationLoading] = React.useState(false)
-  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
   const [user, setUser] = React.useState<any>(null)
   const { toast } = useToast()
@@ -32,12 +33,15 @@ export default function SuppliersPage() {
       if (user) {
         setUser(user)
         const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
-        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        if (profile?.geminiApiKey) setGroqKey(profile.geminiApiKey)
         if (profile?.countryCode) setCountryCode(profile.countryCode)
       }
     }
     init()
   }, [])
+
+  const fallbackKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
+  const activeKey = groqKey || fallbackKey
 
   const getUserLocation = React.useCallback(() => {
     setLocationLoading(true)
@@ -82,11 +86,11 @@ export default function SuppliersPage() {
     e?.preventDefault()
     if (!query.trim()) return
 
-    if (!geminiKey) {
+    if (!activeKey) {
       toast({
         variant: "destructive",
         title: "Missing API Key",
-        description: "Please add your Gemini API Key in Settings to use the Supplier Finder."
+        description: "Please add your Groq API Key in Settings to use the Supplier Finder."
       })
       return
     }
@@ -103,7 +107,7 @@ export default function SuppliersPage() {
         longitude: lng,
         productType: query,
         countryCode: countryCode,
-        apiKey: geminiKey
+        apiKey: activeKey
       })
       setResults(output)
     } catch (error) {
@@ -144,12 +148,12 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      {!geminiKey && (
+      {!activeKey && (
         <Alert variant="destructive" className="rounded-3xl bg-destructive/10 border-none p-6 animate-in slide-in-from-top-4 duration-500 max-w-4xl mx-auto">
            <AlertCircle className="h-5 w-5 text-destructive" />
            <AlertTitle className="text-destructive font-bold">Search Offline</AlertTitle>
            <AlertDescription className="text-destructive/80 text-xs">
-             The Supplier Finder requires your own Gemini API Key. 
+             The Supplier Finder requires your own Groq API Key. 
              <Link href="/dashboard/settings" className="ml-2 underline font-bold">Go to Settings →</Link>
            </AlertDescription>
         </Alert>
