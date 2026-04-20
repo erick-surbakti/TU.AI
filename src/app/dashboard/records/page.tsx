@@ -341,6 +341,7 @@ export default function RecordsPage() {
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-xl font-bold text-slate-500">No Readiness Data Available</h4>
+<<<<<<< HEAD
                   <p className="text-sm text-slate-400">If you need investor, you can fill the form that we had to get started on your investment journey.</p>
                 </div>
                 <Button
@@ -350,6 +351,18 @@ export default function RecordsPage() {
                   className="rounded-2xl h-14 px-10 font-bold bg-primary"
                 >
                   Go to Form
+=======
+                  <p className="text-sm text-slate-400">You must run a Farm Audit first to unlock the Investor Matchmaking engine.</p>
+                </div>
+                <Button
+                  onClick={() => {
+                    const tabTrigger = document.querySelector('[value="audit"]') as HTMLElement
+                    tabTrigger?.click()
+                  }}
+                  className="rounded-2xl h-14 px-10 font-bold bg-primary"
+                >
+                  Go to
+>>>>>>> 4d34a26ab06acff10245004f1aa72ead216eaf79
                 </Button>
               </Card>
             ) : (
