@@ -8,20 +8,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { scanCrop, type ScanCropOutput } from "@/ai/flows/scan-crop-flow"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import { useFirestore, useUser, useMemoFirebase, useCollection, useDoc } from "@/firebase"
-import { collection, doc, serverTimestamp } from "firebase/firestore"
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { createClient } from "@/supabase/client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 
 export default function DiseaseScanPage() {
-  const { user } = useUser()
-  const db = useFirestore()
+  const supabase = createClient()
   const { toast } = useToast()
 
-  const userRef = useMemoFirebase(() => (db && user ? doc(db, "users", user.uid) : null), [db, user])
-  const { data: profile } = useDoc(userRef)
-  const geminiKey = profile?.geminiApiKey
+  const [user, setUser] = React.useState<any>(null)
+  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [scanHistory, setScanHistory] = React.useState<any[]>([])
 
   const [image, setImage] = React.useState<string | null>(null)
   const [description, setDescription] = React.useState("")
@@ -29,12 +26,20 @@ export default function DiseaseScanPage() {
   const [result, setResult] = React.useState<ScanCropOutput | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const scansQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return collection(db, "users", user.uid, "cropScanResults")
-  }, [db, user])
-
-  const { data: scanHistory } = useCollection(scansQuery)
+  React.useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+        const { data: profile } = await supabase.from('users').select('geminiApiKey').eq('id', user.id).single()
+        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        
+        const { data: history } = await supabase.from('crop_scan_results').select('*').eq('user_id', user.id).order('scanDate', { ascending: false }).limit(5)
+        if (history) setScanHistory(history)
+      }
+    }
+    init()
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -66,17 +71,18 @@ export default function DiseaseScanPage() {
       })
       setResult(output)
 
-      const scanRef = collection(db, "users", user.uid, "cropScanResults")
-      addDocumentNonBlocking(scanRef, {
-        userId: user.uid,
-        imageStoragePath: "simulated_path",
+      await supabase.from('crop_scan_results').insert({
+        user_id: user.id,
+        image_url: "simulated_path",
         scanDate: new Date().toISOString(),
         diseaseIdentified: output.diseaseName || (output.diseaseIdentified ? "Identified" : "Healthy"),
         confidenceScore: output.confidenceScore,
-        recommendations: output.treatmentRecommendation,
-        status: "Processed",
-        createdAt: serverTimestamp()
+        recommendation: output.treatmentRecommendation,
+        status: "Processed"
       })
+
+      const { data: history } = await supabase.from('crop_scan_results').select('*').eq('user_id', user.id).order('scanDate', { ascending: false }).limit(5)
+      if (history) setScanHistory(history)
 
       toast({ title: "Scan Complete" })
     } catch (error) {

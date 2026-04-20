@@ -5,17 +5,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Sprout, ShieldCheck, MapPin, Zap, ArrowRight, MessageCircle, ClipboardList, BarChart3, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 
 export default async function LandingPage() {
-  const heroImageUrl = "https://up.yimg.com/ib/th/id/OIP.oq5bK_GODckYtP3oH58TOwHaEZ?pid=Api&rs=1&c=1&qlt=95&w=171&h=101";
+  const heroImageUrl = "https://media.istockphoto.com/id/1328004520/photo/healthy-young-soybean-crop-in-field-at-dawn.jpg?b=1&s=170667a&w=0&k=20&c=nb9fxR6z4ztjH_Ov-3NCHPd0O5SpBwxWXmKeEd4W9pc=";
 
   return (
     <div className="flex flex-col min-h-screen bg-white selection:bg-primary/20 scroll-smooth">
@@ -27,7 +27,7 @@ export default async function LandingPage() {
           </div>
           <span className="text-2xl font-headline font-black text-primary tracking-tighter">TUAI</span>
         </Link>
-        
+
         <nav className="hidden md:flex gap-10">
           <Link className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors" href="#features">Features</Link>
           <Link className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors" href="#mission">Mission</Link>
@@ -56,7 +56,7 @@ export default async function LandingPage() {
                 <span className="uppercase tracking-wider">Next-Gen AgTech for ASEAN</span>
               </div>
               <h1 className="text-6xl lg:text-8xl font-headline font-bold text-slate-900 leading-[1.05] tracking-tight">
-                Farm with <br/>
+                Farm with <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">
                   Intelligence.
                 </span>
@@ -66,11 +66,11 @@ export default async function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
                 <Link href="/login">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="bg-primary hover:bg-primary/90 rounded-full text-lg h-16 px-10 shadow-xl shadow-primary/20 group font-bold w-full sm:w-auto"
                   >
-                    Start Your Trial 
+                    Start Your Trial
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
@@ -94,7 +94,7 @@ export default async function LandingPage() {
                   unoptimized={true}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                
+
                 {/* Floating UI Element */}
                 <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-2xl flex items-center gap-5 border border-white/50 animate-in fade-in slide-in-from-bottom-5 duration-1000">
                   <div className="h-12 w-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-inner">
@@ -116,13 +116,13 @@ export default async function LandingPage() {
             <div className="max-w-3xl mb-20">
               <h2 className="text-sm font-black text-primary uppercase tracking-[0.2em] mb-4">The Platform</h2>
               <h3 className="text-4xl lg:text-5xl font-headline font-bold text-slate-900 mb-6">
-                Everything you need to <br/> scale your production.
+                Everything you need to <br /> scale your production.
               </h3>
               <p className="text-xl text-slate-500 font-medium">
                 Built on Google Cloud & Vertex AI to provide enterprise-grade insights for local farms.
               </p>
             </div>
-            
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { title: "Crop Disease AI", desc: "Upload a photo and let our vision agents diagnose issues in seconds using Gemini Flash.", icon: Sprout, color: "bg-emerald-500", link: "/dashboard/disease-scan" },
@@ -133,7 +133,7 @@ export default async function LandingPage() {
                 { title: "Smart Alerts", desc: "Push notifications for localized weather risks and market fluctuations.", icon: Zap, color: "bg-yellow-500", link: "/dashboard" }
               ].map((f, i) => (
                 <Link href={f.link} key={i}>
-                  <div 
+                  <div
                     className="p-10 rounded-[32px] bg-white border border-slate-100 hover:border-primary/20 transition-all hover:shadow-2xl hover:shadow-primary/5 group cursor-pointer h-full"
                   >
                     <div className={`h-12 w-12 ${f.color} rounded-xl flex items-center justify-center mb-8 shadow-lg shadow-black/10 group-hover:-rotate-6 transition-transform`}>
@@ -151,7 +151,7 @@ export default async function LandingPage() {
         {/* Mission Section */}
         <section id="mission" className="py-32 bg-primary text-white overflow-hidden relative">
           <div className="absolute top-0 right-0 opacity-10 translate-x-1/4 -translate-y-1/4">
-             <Globe className="w-[600px] h-[600px]" />
+            <Globe className="w-[600px] h-[600px]" />
           </div>
           <div className="container mx-auto px-6 lg:px-12 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -172,32 +172,34 @@ export default async function LandingPage() {
                     <div className="space-y-6 py-4 text-slate-700 leading-relaxed">
                       <p className="font-bold text-xl">1. The Crisis of Dependency</p>
                       <p>ASEAN nations, while fertile, remain heavily dependent on volatile global supply chains for fertilizers and machinery. Geopolitical shocks (e.g., Eastern European conflicts) directly impact the cost of Padi production in Kedah and Selangor.</p>
-                      
+
                       <p className="font-bold text-xl">2. AI as a Sovereign Shield</p>
                       <p>TUAI implements locally-grounded LLMs (Gemini Pro) to monitor these global shocks 24/7. By providing farmers with real-time risk assessments, we allow them to stockpile resources or shift strategies before the market crashes.</p>
-                      
+
                       <p className="font-bold text-xl">3. The Future of Smallholder Farms</p>
                       <p>Our roadmap includes the integration of autonomous drone spraying and AI soil sensors, traditionally reserved for massive estates, making them accessible to farmers with less than 5 hectares.</p>
-                      
-                      <p className="font-bold text-xl">Conclusion</p>
-                      <p>Food security is national security. TUAI is more than a tool; it is a digital ecosystem designed to ensure Malaysia and the wider ASEAN region can feed its people regardless of global instability.</p>
+
+                      <div className="space-y-6">
+                        <p>Food security is national security. TUAI is more than a tool; it is a digital ecosystem designed to ensure the ASEAN region can feed its people regardless of global instability.</p>
+                        <p>Built for the farmers of Southeast Asia.</p>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-[32px] p-8 border border-white/20">
-                 <div className="space-y-6">
-                    {[
-                      { label: "Data-Driven Decisions", val: "100%" },
-                      { label: "Localization Support", val: "ASEAN-wide" },
-                      { label: "AI Response Time", val: "< 2.0s" }
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-end border-b border-white/10 pb-4">
-                        <span className="font-bold text-lg">{item.label}</span>
-                        <span className="text-3xl font-black text-emerald-400">{item.val}</span>
-                      </div>
-                    ))}
-                 </div>
+                <div className="space-y-6">
+                  {[
+                    { label: "Data-Driven Decisions", val: "100%" },
+                    { label: "Localization Support", val: "ASEAN-wide" },
+                    { label: "AI Response Time", val: "< 2.0s" }
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-end border-b border-white/10 pb-4">
+                      <span className="font-bold text-lg">{item.label}</span>
+                      <span className="text-3xl font-black text-emerald-400">{item.val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -208,18 +210,18 @@ export default async function LandingPage() {
           <div className="container mx-auto px-6 lg:px-12 text-center">
             <h2 className="text-4xl font-bold mb-16">Creating Real Impact</h2>
             <div className="grid md:grid-cols-3 gap-12">
-               <div className="space-y-4">
-                  <div className="text-5xl font-black text-primary">15k+</div>
-                  <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Farmers Empowered</div>
-               </div>
-               <div className="space-y-4">
-                  <div className="text-5xl font-black text-primary">30%</div>
-                  <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Yield Increase</div>
-               </div>
-               <div className="space-y-4">
-                  <div className="text-5xl font-black text-primary">24/7</div>
-                  <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">AI Monitoring</div>
-               </div>
+              <div className="space-y-4">
+                <div className="text-5xl font-black text-primary">15k+</div>
+                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Farmers Empowered</div>
+              </div>
+              <div className="space-y-4">
+                <div className="text-5xl font-black text-primary">30%</div>
+                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Yield Increase</div>
+              </div>
+              <div className="space-y-4">
+                <div className="text-5xl font-black text-primary">24/7</div>
+                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">AI Monitoring</div>
+              </div>
             </div>
           </div>
         </section>

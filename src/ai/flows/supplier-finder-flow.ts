@@ -7,13 +7,16 @@
  * - SupplierFinderOutput - The return type for the findSuppliers function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, getAiWithKey} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getRegionalContext } from '@/lib/localization';
 
 const SupplierFinderInputSchema = z.object({
   latitude: z.number().describe("The user's current latitude."),
   longitude: z.number().describe("The user's current longitude."),
   productType: z.string().describe('The type of agricultural input needed (e.g., "fertilizer", "seeds").'),
+  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
+  apiKey: z.string().optional().describe("User's own Gemini API key."),
 });
 export type SupplierFinderInput = z.infer<typeof SupplierFinderInputSchema>;
 
@@ -35,18 +38,7 @@ export type SupplierFinderOutput = z.infer<typeof SupplierFinderOutputSchema>;
  * Simulates fetching nearby agricultural suppliers based on location and product type.
  * In a real application, this would interact with a Maps API or a supplier database.
  */
-const getNearbySuppliersTool = ai.defineTool(
-  {
-    name: 'getNearbySuppliers',
-    description: 'Fetches a list of nearby agricultural suppliers for a specific product type.',
-    inputSchema: z.object({
-      latitude: z.number().describe("The user's current latitude."),
-      longitude: z.number().describe("The user's current longitude."),
-      productType: z.string().describe('The type of agricultural input needed.'),
-    }),
-    outputSchema: z.array(SupplierInfoSchema).describe('A list of nearby suppliers with their details.'),
-  },
-  async ({latitude, longitude, productType}) => {
+async function getNearbySuppliers(latitude: number, longitude: number, productType: string) {
     // Simulate API call to a supplier database or Maps API
     // For the hackathon, returning mock data.
     console.log(`Searching for ${productType} suppliers near ${latitude}, ${longitude}`);
@@ -76,72 +68,37 @@ const getNearbySuppliersTool = ai.defineTool(
       },
     ];
 
-    return mockSuppliers.filter(supplier => {
-      // Simple filtering logic; in a real app, this would be more complex
-      // e.g., checking if productType is available at supplier
-      return productType.toLowerCase().includes('fertilizer') || productType.toLowerCase().includes('seeds') || true; // Always return mock suppliers for any product for demo
-    });
-  }
-);
-
-const summarizeSuppliersPrompt = ai.definePrompt({
-  name: 'summarizeSuppliersPrompt',
-  input: {
-    schema: z.object({
-      productType: z.string().describe('The type of agricultural input needed.'),
-      suppliers: z.array(SupplierInfoSchema).describe('A JSON array of nearby suppliers including name, address, contact, distance, and map link.'),
-    }),
-  },
-  output: {schema: SupplierFinderOutputSchema},
-  prompt: `You are an AI assistant helping a farmer find agricultural suppliers.
-
-Based on the following list of nearby suppliers for {{{productType}}}, provide a concise summary of the best options. Highlight their names, approximate distances, and how to contact them or get directions. Prioritize closer options.
-
-Suppliers:
-{{#each suppliers}}
-- Name: {{{name}}}
-  Address: {{{address}}}
-  Contact: {{{contact}}}
-  Distance: {{{distanceKm}}} km
-  Map: {{{mapLink}}}
-{{/each}}
-
-Your output MUST be a JSON object matching the SupplierFinderOutputSchema, including both a 'summary' string and a 'suppliers' array.`,
-});
-
-const supplierFinderFlow = ai.defineFlow(
-  {
-    name: 'supplierFinderFlow',
-    inputSchema: SupplierFinderInputSchema,
-    outputSchema: SupplierFinderOutputSchema,
-  },
-  async (input) => {
-    // Use the tool to find nearby suppliers
-    const suppliers = await getNearbySuppliersTool({
-      latitude: input.latitude,
-      longitude: input.longitude,
-      productType: input.productType,
-    });
-
-    // If no suppliers are found, provide a default response
-    if (suppliers.length === 0) {
-      return {
-        summary: `No suppliers found for ${input.productType} near your location. Please try a different product or adjust your search area.`, 
-        suppliers: []
-      };
-    }
-
-    // Use the prompt to summarize the found suppliers
-    const {output} = await summarizeSuppliersPrompt({
-      productType: input.productType,
-      suppliers: suppliers,
-    });
-
-    // Ensure the output is not null and return it
-    return output!;
-  }
-);
+    return mockSuppliers;
+}
 
 export async function findSuppliers(input: SupplierFinderInput): Promise<SupplierFinderOutput> {
-  return supplierFinderFlow(input);
+  const aiInstance = getAiWithKey(input.apiKey);
+  const { countryName } = getRegionalContext(input.countryCode);
+
+  // Use the tool to find nearby suppliers (Mock still used for coordinates, but AI will ground it now)
+  const suppliers = await getNearbySuppliers(
+    input.latitude,
+    input.longitude,
+    input.productType,
+  );
+
+  const result = await aiInstance.generate({
+    model: 'googleai/gemini-2.5-flash',
+    prompt: `You are an AI assistant helping a farmer find agricultural suppliers in ${countryName}.
+    
+ACTUAL TASK:
+1. USE YOUR SEARCH TOOL to find the names of REAL major agricultural trade centers, wholesale markets, or large cooperatives for ${input.productType} in ${countryName}, specifically near any major hubs in the user's country.
+2. If the user's coordinates are provided, mention those, but PRIORITIZE providing real-world market names that exist in ${countryName}.
+
+Search for: "${input.productType} markets in ${countryName}" or "agricultural input stores in ${countryName}".
+
+Your output MUST be a JSON object matching the SupplierFinderOutputSchema.`,
+    config: {
+      googleSearchRetrieval: {}
+    } as any,
+    output: { schema: SupplierFinderOutputSchema }
+  });
+
+  if (!result.output) throw new Error('Failed to generate supplier summary.');
+  return result.output;
 }

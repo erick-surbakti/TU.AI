@@ -9,9 +9,11 @@
 
 import { ai, getAiWithKey } from '@/ai/genkit';
 import { z } from 'genkit';
+import { getRegionalContext } from '@/lib/localization';
 
 const RiskIntelInputSchema = z.object({
   region: z.string().describe('The specific geographic region for which the risk analysis is performed (e.g., "Malaysia").'),
+  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
   newsSummary: z.string().describe('A summary of recent global news, including geopolitical events, conflicts, and trade policy changes relevant to agricultural supply chains.'),
   commodityPrices: z.record(z.string(), z.number()).describe('A dictionary of current commodity prices relevant to farming (e.g., {"fertilizer": 750, "diesel": 1.20}).'),
   exportImportBans: z.array(z.string()).describe('A list of reported export or import bans on agricultural goods or inputs.'),
@@ -24,46 +26,32 @@ const RiskIntelOutputSchema = z.object({
   alertLevel: z.enum(['Low', 'Medium', 'High', 'Critical']).describe('The overall alert level indicating the severity of the supply chain risk.'),
   potentialImpactSummary: z.string().describe('A summary of how the identified risks could potentially impact farming operations in the specified region.'),
   recommendedActions: z.array(z.string()).describe('A list of specific, actionable steps farmers can take to mitigate the identified risks.'),
+  groundingProof: z.string().optional().describe('A brief mention of the real-world event found via search that justifies this risk level.'),
 });
 export type RiskIntelOutput = z.infer<typeof RiskIntelOutputSchema>;
 
 export async function riskIntel(input: RiskIntelInput): Promise<RiskIntelOutput> {
   const aiInstance = getAiWithKey(input.apiKey);
-  const prompt = aiInstance.definePrompt({
-    name: 'riskIntelPrompt',
-    input: { schema: RiskIntelInputSchema },
-    output: { schema: RiskIntelOutputSchema },
-    model: 'googleai/gemini-2.5-flash', 
+  const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
+
+  const { output } = await aiInstance.generate({
+    model: 'googleai/gemini-2.5-flash',
+    prompt: `You are an expert agricultural supply chain risk advisor for ${countryName}.
+    
+ACTUAL TASK:
+1. USE YOUR SEARCH TOOL to find any REAL and RECENT geopolitical or trade news (last 7 days) that impacts agricultural costs (fuel, fertilizer, shipping, chemicals) in ${countryName} or the ASEAN region.
+2. Search for the current price trends of urea and diesel in ${countryName}.
+3. Based on REAL FACTS found, determine the alert level.
+
+If you find a specific event (e.g. a new export ban or a specific shipping delay), describe it in 'potentialImpactSummary' and record the specific source/event in 'groundingProof'.
+
+Context: The ${leaderTitle} of ${countryName} is focused on food sovereignty.`,
     config: {
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-      ],
-    },
-    prompt: `You are an expert agricultural supply chain risk advisor specializing in farming operations in {{region}}.
-
-Analyze the following information to identify potential supply chain disruptions, assess their impact on local farming, and provide clear, actionable preventative measures.
-
-### Recent Global News Summary:
-{{{newsSummary}}}
-
-### Current Commodity Prices:
-{{{commodityPrices}}}
-
-### Export/Import Bans Reported:
-{{#each exportImportBans}}- {{{this}}}{{/each}}
-
-### Relevant Policy Updates:
-{{{policyUpdates}}}
-
-Based on this data, determine the overall alert level, summarize the potential impact on farming in {{region}}, and provide specific recommended actions for farmers to mitigate these risks.
-
-Focus on practical advice that farmers can implement.`,
+      googleSearchRetrieval: {}
+    } as any,
+    output: { schema: RiskIntelOutputSchema },
   });
 
-  const { output } = await prompt(input);
   if (!output) {
     throw new Error('Failed to generate supply chain risk intelligence.');
   }

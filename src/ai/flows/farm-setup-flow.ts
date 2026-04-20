@@ -5,7 +5,7 @@
  * - farmSetupGuide - Provides a detailed roadmap for new farmers or a deep health audit for existing ones.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getAiWithKey } from '@/ai/genkit';
 import { z } from 'zod';
 
 const ProductionDataSchema = z.object({
@@ -52,6 +52,8 @@ const FarmSetupInputSchema = z.object({
   // Shared
   goals: z.array(z.string()),
   helpType: z.string(),
+  apiKey: z.string().optional(),
+  countryCode: z.string().optional().describe('The user\'s ISO country code.'),
 });
 
 export type FarmSetupInput = z.infer<typeof FarmSetupInputSchema>;
@@ -83,60 +85,31 @@ const FarmSetupOutputSchema = z.object({
 export type FarmSetupOutput = z.infer<typeof FarmSetupOutputSchema>;
 
 export async function farmSetupGuide(input: FarmSetupInput): Promise<FarmSetupOutput> {
-  return farmSetupFlow(input);
+  const aiInstance = getAiWithKey(input.apiKey);
+  const { countryName, leaderTitle } = getRegionalContext(input.countryCode);
+  
+  const { output } = await aiInstance.generate({
+    model: 'googleai/gemini-2.5-flash',
+    prompt: `You are a professional agricultural consultant for ${countryName}.
+    
+ACTUAL REAL-WORLD TASK:
+1. USE YOUR SEARCH TOOL to find real land price ranges in ${input.basicInfo.region}, ${countryName} for agricultural land.
+2. Search for the names of 2-3 REAL government grants or subsidies currently offered for ${input.targetCrop || input.farmType || 'farmers'} in ${countryName}.
+3. Provide a step-by-step roadmap tailored to the local climate of ${input.basicInfo.region}.
+
+   USER PROFILE:
+   - Status: ${input.status}
+   - Region: ${input.basicInfo.region}
+   - Target/Current: ${input.targetCrop || ''}${input.farmType || ''}
+   - Budget: ${input.budget}
+
+Always include a "MotivationAI" section mentioning how ${countryName}'s food security is a priority for the ${leaderTitle}.`,
+    config: {
+      googleSearchRetrieval: {}
+    } as any,
+    output: { schema: FarmSetupOutputSchema },
+  });
+
+  if (!output) throw new Error('AI failed to generate farm plan.');
+  return output;
 }
-
-const farmSetupPrompt = ai.definePrompt({
-  name: 'farmSetupPrompt',
-  input: { schema: FarmSetupInputSchema },
-  output: { schema: FarmSetupOutputSchema },
-  prompt: `You are a professional agricultural consultant for ASEAN. Analyze this farm profile and provide a deep intelligence report.
-
-  USER STATUS: {{{status}}}
-  
-  {{#if (eq status "existing")}}
-  ### EXISTING FARM AUDIT
-  Farm Name: {{{basicInfo.farmName}}}
-  Region: {{{basicInfo.region}}}, {{{basicInfo.country}}}
-  Farm Type: {{{farmType}}}
-  Size: {{{sizeValue}}} {{{sizeUnit}}}
-  Livestock: {{#if hasLivestock}}{{{livestockDetails}}}{{else}}None{{/if}}
-  Tech Interest: {{#if techInterest}}High (Interested in Robots/AI){{else}}Low{{/if}}
-  Current Problems: {{#each problems}}- {{{this}}} {{/each}}
-  Production Stats: Yield: {{{productionData.averageYield}}}, Feed: {{{productionData.feedUsage}}}
-  
-  Tasks:
-  1. Generate a "Farm Health Report" with scores based on their operational data.
-  2. Provide 3-5 specific recommendations to solve their "Current Problems" (especially yield and cost).
-  3. Suggest specific localized robotics or AI tools (like TUAI Scanners) if they are tech-interested.
-  {{/if}}
-
-  {{#if (eq status "beginner")}}
-  ### BEGINNER ROADMAP
-  Interest: {{{targetCrop}}}
-  Capital (Modal): {{{budget}}}
-  Land Status: {{#if hasLand}}Owns land{{else}}Needs land scouting{{/if}}
-  Motivation: {{{motivation}}}
-  
-  Tasks:
-  1. Provide a step-by-step roadmap from 0 to first harvest in {{{basicInfo.region}}}.
-  2. If they need land, suggest 3 specific sub-regions in {{{basicInfo.region}}} for land purchase with estimated prices.
-  3. Breakdown the "Initial Capital" needed for seeds, tools, and labor based on their {{{budget}}}.
-  4. Explain why choosing {{{targetCrop}}} is a smart move for reducing national export dependency.
-  {{/if}}
-
-  Always include a "MotivationAI" section explaining why local farming is critical for food security.`,
-});
-
-const farmSetupFlow = ai.defineFlow(
-  {
-    name: 'farmSetupFlow',
-    inputSchema: FarmSetupInputSchema,
-    outputSchema: FarmSetupOutputSchema,
-  },
-  async (input) => {
-    const { output } = await farmSetupPrompt(input);
-    if (!output) throw new Error('AI failed to generate farm plan.');
-    return output;
-  }
-);

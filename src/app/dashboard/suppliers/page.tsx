@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { findSuppliers, type SupplierFinderOutput } from "@/ai/flows/supplier-finder-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/supabase/client"
+import { ASEAN_COUNTRIES } from "@/lib/localization"
+import Link from "next/link"
 
 export default function SuppliersPage() {
   const [query, setQuery] = React.useState("")
@@ -17,7 +20,24 @@ export default function SuppliersPage() {
   const [results, setResults] = React.useState<SupplierFinderOutput | null>(null)
   const [location, setLocation] = React.useState<{lat: number, lng: number} | null>(null)
   const [locationLoading, setLocationLoading] = React.useState(false)
+  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [countryCode, setCountryCode] = React.useState<string>("MY")
+  const [user, setUser] = React.useState<any>(null)
   const { toast } = useToast()
+  const supabase = createClient()
+
+  React.useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+        const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
+        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        if (profile?.countryCode) setCountryCode(profile.countryCode)
+      }
+    }
+    init()
+  }, [])
 
   const getUserLocation = React.useCallback(() => {
     setLocationLoading(true)
@@ -58,21 +78,32 @@ export default function SuppliersPage() {
   React.useEffect(() => {
     getUserLocation()
   }, [getUserLocation])
-
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!query.trim()) return
 
+    if (!geminiKey) {
+      toast({
+        variant: "destructive",
+        title: "Missing API Key",
+        description: "Please add your Gemini API Key in Settings to use the Supplier Finder."
+      })
+      return
+    }
+
     setIsSearching(true)
     try {
-      // Use detected location or fallback to Kuala Lumpur
-      const lat = location?.lat || 3.1390
-      const lng = location?.lng || 101.6869
+      // Use detected location or fallback to Capital City of the user's country
+      const config = ASEAN_COUNTRIES[countryCode] || ASEAN_COUNTRIES["MY"]
+      const lat = location?.lat || config.capitalCoords.lat
+      const lng = location?.lng || config.capitalCoords.lng
       
       const output = await findSuppliers({
         latitude: lat,
         longitude: lng,
-        productType: query
+        productType: query,
+        countryCode: countryCode,
+        apiKey: geminiKey
       })
       setResults(output)
     } catch (error) {
@@ -112,6 +143,17 @@ export default function SuppliersPage() {
           </Button>
         </div>
       </div>
+
+      {!geminiKey && (
+        <Alert variant="destructive" className="rounded-3xl bg-destructive/10 border-none p-6 animate-in slide-in-from-top-4 duration-500 max-w-4xl mx-auto">
+           <AlertCircle className="h-5 w-5 text-destructive" />
+           <AlertTitle className="text-destructive font-bold">Search Offline</AlertTitle>
+           <AlertDescription className="text-destructive/80 text-xs">
+             The Supplier Finder requires your own Gemini API Key. 
+             <Link href="/dashboard/settings" className="ml-2 underline font-bold">Go to Settings →</Link>
+           </AlertDescription>
+        </Alert>
+      )}
 
       <form onSubmit={handleSearch} className="flex gap-2 w-full max-w-2xl mx-auto">
         <div className="relative flex-1 group">

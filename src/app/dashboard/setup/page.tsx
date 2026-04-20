@@ -31,10 +31,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { farmSetupGuide, type FarmSetupOutput } from "@/ai/flows/farm-setup-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { useFirestore, useUser } from "@/firebase"
-import { collection, serverTimestamp } from "firebase/firestore"
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { createClient } from "@/supabase/client"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+import Link from "next/link"
+
+import { ASEAN_COUNTRIES, getRegionalContext } from "@/lib/localization"
 
 export default function FarmSetupPage() {
   const [loading, setLoading] = React.useState(false)
@@ -42,13 +45,11 @@ export default function FarmSetupPage() {
   const [step, setStep] = React.useState(1)
   const [mounted, setMounted] = React.useState(false)
   const { toast } = useToast()
-  const { user } = useUser()
-  const db = useFirestore()
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
+  const supabase = createClient()
+  const [user, setUser] = React.useState<any>(null)
+  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [countryCode, setCountryCode] = React.useState<string>("MY")
+  
   const [formData, setFormData] = React.useState({
     status: 'beginner' as 'beginner' | 'existing',
     basicInfo: {
@@ -83,6 +84,32 @@ export default function FarmSetupPage() {
     helpType: 'Daily alerts',
   })
 
+  React.useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+        const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
+        if (profile?.geminiApiKey) setGeminiKey(profile.geminiApiKey)
+        if (profile?.countryCode) {
+          const code = profile.countryCode
+          setCountryCode(code)
+          const config = ASEAN_COUNTRIES[code] || ASEAN_COUNTRIES["MY"]
+          setFormData(prev => ({
+            ...prev,
+            basicInfo: {
+              ...prev.basicInfo,
+              country: config.name
+            },
+            budget: `${config.currency.symbol} 0–500`
+          }))
+        }
+      }
+      setMounted(true)
+    }
+    init()
+  }, [])
+
   const handleProblemToggle = (problem: string) => {
     setFormData(prev => ({
       ...prev,
@@ -103,17 +130,32 @@ export default function FarmSetupPage() {
 
   const handleStartPlanning = async () => {
     setLoading(true)
+    if (!geminiKey) {
+      toast({
+        variant: "destructive",
+        title: "Missing API Key",
+        description: "Please add your Gemini API Key in Settings first."
+      })
+      setLoading(false)
+      return
+    }
+
     try {
-      const output = await farmSetupGuide(formData)
+      const output = await farmSetupGuide({ ...formData, apiKey: geminiKey, countryCode: countryCode })
       setResult(output)
 
-      if (db && user) {
-        const farmsRef = collection(db, "farms")
-        addDocumentNonBlocking(farmsRef, {
-          ...formData,
-          userId: user.uid,
-          aiAnalysis: output,
-          createdAt: serverTimestamp()
+      if (user) {
+        supabase.from('farms').insert({
+          user_id: user.id,
+          name: formData.basicInfo.farmName || "AI Planned Farm",
+          location: formData.basicInfo.region,
+          croptype: formData.farmType || formData.targetCrop,
+          data: {
+            ...formData,
+            aiAnalysis: output
+          }
+        }).then(({ error }) => {
+          if (error) console.error("Error saving farm data", error)
         })
       }
 
@@ -175,9 +217,9 @@ export default function FarmSetupPage() {
                    <Select value={formData.basicInfo.country} onValueChange={(v) => setFormData(p => ({...p, basicInfo: {...p.basicInfo, country: v}}))}>
                      <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200"><SelectValue /></SelectTrigger>
                      <SelectContent>
-                        <SelectItem value="Malaysia">Malaysia</SelectItem>
-                        <SelectItem value="Indonesia">Indonesia</SelectItem>
-                        <SelectItem value="Thailand">Thailand</SelectItem>
+                        {Object.values(ASEAN_COUNTRIES).map(c => (
+                          <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                        ))}
                      </SelectContent>
                    </Select>
                  </div>
@@ -440,6 +482,17 @@ export default function FarmSetupPage() {
         </div>
       </div>
 
+      {!geminiKey && (
+        <Alert variant="destructive" className="rounded-3xl bg-destructive/10 border-none p-6 animate-in slide-in-from-top-4 duration-500">
+           <AlertCircle className="h-5 w-5 text-destructive" />
+           <AlertTitle className="text-destructive font-bold">AI Engine Offline</AlertTitle>
+           <AlertDescription className="text-destructive/80 text-xs">
+             You need an active Gemini API Key to use the Pathfinder. 
+             <Link href="/dashboard/settings" className="ml-2 underline font-bold">Go to Settings →</Link>
+           </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-5">
           <Card className="rounded-[2.5rem] shadow-2xl border-none bg-white overflow-hidden">
@@ -613,7 +666,7 @@ export default function FarmSetupPage() {
               <div className="space-y-4 max-w-[350px]">
                 <h3 className="text-2xl font-headline font-bold text-slate-900 leading-tight">Farm Intelligence Engine</h3>
                 <p className="text-slate-500 text-base font-medium leading-relaxed italic">
-                  Complete the setup wizard to trigger a Gemini AI analysis. We'll identify regional risks and build your tailored roadmap.
+                  Food security is national security. TUAI is more than a tool; it is a digital ecosystem designed to ensure the ASEAN region can feed its people regardless of global instability.
                 </p>
               </div>
               <div className="text-[10px] font-black text-primary uppercase tracking-[0.3em] opacity-40">

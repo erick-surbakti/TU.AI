@@ -10,19 +10,24 @@ import {
   TrendingUp, 
   AlertTriangle,
   ArrowRight,
+  Newspaper,
+  Compass,
+  Smile,
+  Globe,
   Plus,
+  Sparkles,
   MapPin,
   MessageSquare,
-  Activity,
-  Newspaper,
-  Globe,
-  Sparkles,
-  Compass
+  Activity
 } from "lucide-react"
+import { ASEAN_COUNTRIES, formatCurrency } from "@/lib/localization"
 import Link from "next/link"
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
+import { useEasyMode } from "@/components/easy-mode-provider"
+import { createClient } from "@/supabase/client"
+import * as React from "react"
 
 const chartData = [
   { day: "Mon", growth: 45 },
@@ -35,27 +40,94 @@ const chartData = [
 ]
 
 export default function DashboardPage() {
+  const { isEasyMode, ageGroup, birthDate } = useEasyMode()
+  const [userName, setUserName] = React.useState("Farmer")
+  const [countryCode, setCountryCode] = React.useState("MY")
+  const supabase = createClient()
+  React.useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        if (user.user_metadata?.display_name) {
+          setUserName(user.user_metadata.display_name.split(' ')[0])
+        }
+        const { data: profile } = await supabase.from('users').select('countryCode').eq('id', user.id).single()
+        if (profile?.countryCode) setCountryCode(profile.countryCode)
+      }
+    }
+    init()
+  }, [])
+
+  const isBirthday = React.useMemo(() => {
+    if (!birthDate) return false
+    const today = new Date()
+    const birth = new Date(birthDate)
+    return today.getMonth() === birth.getMonth() && today.getDate() === birth.getDate()
+  }, [birthDate])
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    const greetings: Record<string, {morning: string, afternoon: string, evening: string}> = {
+      MY: { morning: "Selamat Pagi", afternoon: "Selamat Siang", evening: "Selamat Malam" },
+      ID: { morning: "Selamat Pagi", afternoon: "Selamat Siang", evening: "Selamat Malam" },
+      TH: { morning: "Sawatdee Krab", afternoon: "Sawatdee Krab", evening: "Sawatdee Krab" },
+      VN: { morning: "Chào buổi sáng", afternoon: "Chào buổi chiều", evening: "Chào buổi tối" },
+      PH: { morning: "Magandang Umaga", afternoon: "Magandang Hapon", evening: "Magandang Gabi" },
+      SG: { morning: "Good Morning", afternoon: "Good Afternoon", evening: "Good Evening" },
+    }
+    
+    const countryGreeting = greetings[countryCode] || greetings["MY"]
+    if (hour < 12) return countryGreeting.morning
+    if (hour < 18) return countryGreeting.afternoon
+    return countryGreeting.evening
+  }
+
+  const getAgeAdaptiveMessage = () => {
+    if (isEasyMode) {
+      return "Everything looks good today. Rain expected tomorrow. Apply fertilizer today before 5 PM."
+    }
+    
+    switch (ageGroup) {
+      case "Young Farmer":
+        return "Your fields are looking high-performance. Let's maximize your yield with AI Pathfinder."
+      case "Mid Career":
+        return "Efficiency is key today. Optimization report is ready for your perusal."
+      case "Senior Active":
+        return "Steady growth detected cross-plots. Traditional wisdom combined with AI is winning."
+      default:
+        return "Your fields are monitored. AI insights are ready."
+    }
+  }
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20 md:pb-0">
       {/* Welcome & Region Stats */}
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 flex flex-col justify-between p-8 md:p-10 rounded-[3rem] bg-primary text-white shadow-2xl shadow-primary/20 overflow-hidden relative group min-h-[300px]">
           <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
-             <Sprout className="h-48 w-48" />
+             {isBirthday ? <Sparkles className="h-48 w-48 text-yellow-300" /> : <Sprout className="h-48 w-48" />}
           </div>
           <div className="relative z-10 space-y-4">
-            <h2 className="text-4xl md:text-5xl font-headline font-bold leading-tight">Selamat Pagi, Farmer!</h2>
-            <p className="text-primary-foreground/80 max-w-[500px] text-lg font-medium">Your fields are monitored. Would you like to optimize your existing farm or start a new path to zero dependency?</p>
+            {isBirthday && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400 text-primary-foreground font-black text-xs uppercase tracking-widest animate-bounce mb-2">
+                <Smile className="h-4 w-4" /> It's your birthday!
+              </div>
+            )}
+            <h2 className={cn("font-headline font-bold leading-tight transition-all", isEasyMode ? "text-5xl md:text-6xl" : "text-4xl md:text-5xl")}>
+              {isBirthday ? `Happy Birthday, ${userName}!` : `${getGreeting()}, ${userName}!`}
+            </h2>
+            <p className={cn("text-primary-foreground/80 max-w-[500px] font-medium transition-all", isEasyMode ? "text-2xl" : "text-lg")}>
+              {getAgeAdaptiveMessage()}
+            </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 mt-10 relative z-10">
             <Link href="/dashboard/setup">
-              <Button size="lg" className="bg-white text-primary hover:bg-white/90 rounded-2xl font-bold h-14 px-8 shadow-xl">
-                <Compass className="mr-2 h-5 w-5" /> AI Pathfinder
+              <Button size="lg" className={cn("bg-white text-primary hover:bg-white/90 rounded-2xl font-bold px-8 shadow-xl transition-all", isEasyMode ? "h-20 text-2xl" : "h-14")}>
+                <Compass className={cn("mr-2", isEasyMode ? "h-7 w-7" : "h-5 w-5")} /> {isEasyMode ? "Simple Guide" : "AI Pathfinder"}
               </Button>
             </Link>
             <Link href="/dashboard/disease-scan">
-              <Button size="lg" variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-2xl font-bold h-14 px-8 backdrop-blur-sm">
-                <Plus className="mr-2 h-5 w-5" /> New Diagnosis
+              <Button size="lg" variant="outline" className={cn("border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-2xl font-bold px-8 backdrop-blur-sm transition-all", isEasyMode ? "h-20 text-2xl" : "h-14")}>
+                <Plus className={cn("mr-2", isEasyMode ? "h-7 w-7" : "h-5 w-5")} /> {isEasyMode ? "Check Plants" : "New Diagnosis"}
               </Button>
             </Link>
           </div>
@@ -98,10 +170,10 @@ export default function DashboardPage() {
       {/* Critical Alerts */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { icon: Compass, title: "Farmer Pathfinder", color: "primary", desc: "Guide your journey from 0 to hero or optimize needs.", link: "/dashboard/setup", label: "New Path" },
-          { icon: ShieldAlert, title: "Export Ban Detected", color: "destructive", desc: "India has restricted fertilizer exports. Prices may surge soon.", link: "/dashboard/risk-intel", label: "Global Risk" },
-          { icon: Newspaper, title: "AI News Briefing", color: "secondary", desc: "New report on Iran-US tensions and Malaysian food stages.", link: "/dashboard/news", label: "AI News" },
-          { icon: AlertTriangle, title: "Price Surge Alert", color: "orange-500", desc: "Urea prices reported 12% higher at 3 nearby suppliers.", link: "/dashboard/suppliers", label: "Market" },
+          { icon: Compass, title: "Farmer Pathfinder", color: "primary", desc: `Personalized blueprint for ${ASEAN_COUNTRIES[countryCode]?.name || 'local'} terrain.`, link: "/dashboard/setup", label: "New Path" },
+          { icon: ShieldAlert, title: "Policy Risk Detected", color: "destructive", desc: `New trade update for ${ASEAN_COUNTRIES[countryCode]?.name || 'the region'} affecting urea.`, link: "/dashboard/risk-intel", label: "Global Risk" },
+          { icon: Newspaper, title: "AI News Briefing", color: "secondary", desc: `Latest impact reports on ${ASEAN_COUNTRIES[countryCode]?.name || 'local'} food security.`, link: "/dashboard/news", label: "AI News" },
+          { icon: AlertTriangle, title: "Price Surge Alert", color: "orange-500", desc: `Market prices reported higher at 3 nearby suppliers.`, link: "/dashboard/suppliers", label: "Market" },
         ].map((alert, i) => (
           <Card key={i} className="rounded-[2rem] border-none shadow-lg hover:shadow-2xl transition-all group overflow-hidden bg-white">
             <div className={cn("h-1.5 w-full", `bg-${alert.color}`)} />
@@ -132,11 +204,11 @@ export default function DashboardPage() {
            <Card className="rounded-[3rem] shadow-2xl border-none bg-white overflow-hidden">
              <CardHeader className="flex flex-row items-center justify-between p-8 md:p-10">
                 <div>
-                  <CardTitle className="text-2xl font-headline font-bold text-slate-900">Crop Performance</CardTitle>
-                  <CardDescription className="text-lg font-medium text-slate-500">Live health & growth index for Block A (Padi)</CardDescription>
+                  <CardTitle className={cn("font-headline font-bold text-slate-900 transition-all", isEasyMode ? "text-3xl" : "text-2xl")}>Crop Performance</CardTitle>
+                  <CardDescription className={cn("font-medium text-slate-500 transition-all", isEasyMode ? "text-xl" : "text-lg")}>Live health & growth index for Block A (Padi)</CardDescription>
                 </div>
-                <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center shadow-inner">
-                  <Activity className="h-7 w-7 text-primary" />
+                <div className={cn("bg-primary/10 rounded-2xl flex items-center justify-center shadow-inner transition-all", isEasyMode ? "h-20 w-20" : "h-14 w-14")}>
+                  <Activity className={cn("text-primary transition-all", isEasyMode ? "h-10 w-10" : "h-7 w-7")} />
                 </div>
              </CardHeader>
              <CardContent className="px-8 md:px-10 pb-10">
@@ -171,7 +243,7 @@ export default function DashboardPage() {
                   {[
                     { title: "AI Planner: Roadmap Generated", date: "Just now", type: "setup", result: "Strategy Active" },
                     { title: "Disease Scan: Blast Disease", date: "2 hours ago", type: "scan", result: "Treatment Applied" },
-                    { title: "Price Check: Fertilizer", date: "Yesterday", type: "market", result: "Supplier Found" },
+                    { title: "Price Check: Fertilizer", date: "Yesterday", type: "market", result: formatCurrency(150, countryCode) },
                   ].map((act, i) => (
                     <div key={i} className="flex items-center justify-between p-6 rounded-[2rem] bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100 group cursor-pointer shadow-sm hover:shadow-md">
                       <div className="flex items-center gap-5">

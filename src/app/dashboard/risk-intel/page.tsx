@@ -8,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { riskIntel, type RiskIntelOutput } from "@/ai/flows/risk-intel-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { createClient } from "@/supabase/client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 
@@ -36,11 +35,9 @@ const INTEL_POOL: RiskIntelOutput[] = [
 ]
 
 export default function RiskIntelPage() {
-  const { user } = useUser()
-  const db = useFirestore()
-  const userRef = useMemoFirebase(() => (db && user ? doc(db, "users", user.uid) : null), [db, user])
-  const { data: profile } = useDoc(userRef)
-  const geminiKey = profile?.geminiApiKey
+  const supabase = createClient()
+  const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
+  const [countryCode, setCountryCode] = React.useState<string>("MY")
 
   const [intel, setIntel] = React.useState<RiskIntelOutput>(INTEL_POOL[0])
   const [loading, setLoading] = React.useState(false)
@@ -48,6 +45,14 @@ export default function RiskIntelPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single().then(({ data }) => {
+          if (data?.geminiApiKey) setGeminiKey(data.geminiApiKey)
+          if (data?.countryCode) setCountryCode(data.countryCode)
+        })
+      }
+    })
     setMounted(true)
     const day = new Date().getDate()
     const index = day % INTEL_POOL.length
@@ -67,11 +72,12 @@ export default function RiskIntelPage() {
     setLoading(true)
     try {
       const data = await riskIntel({
-        region: "Malaysia",
-        newsSummary: "Global shipping delays reported. Crude oil prices stabilizing around $80/barrel. Regional rice export bans maintained.",
-        commodityPrices: { "Fertilizer (NPK)": 820, "Diesel": 2.15, "Padi Grade A": 1.45 },
-        exportImportBans: ["Regional Rice Export Ban", "China Urea Export Quotas"],
-        policyUpdates: "New federal subsidy for organic soil enhancers starting next month.",
+        region: "Local Region",
+        countryCode: countryCode,
+        newsSummary: "Global shipping delays reported. Crude oil prices stabilizing. Regional rice export bans maintained.",
+        commodityPrices: { "Fertilizer (NPK)": 820, "Diesel": 2.15 },
+        exportImportBans: ["Regional Rice Export Ban"],
+        policyUpdates: "New federal subsidy updates for agriculture.",
         apiKey: geminiKey
       })
       setIntel(data)
@@ -139,12 +145,26 @@ export default function RiskIntelPage() {
             </div>
           </CardHeader>
           <CardContent className="bg-white p-8 pt-4 space-y-8">
-            <div className="p-6 rounded-2xl bg-slate-50 border-l-4 border-l-primary space-y-3 shadow-sm">
-              <h4 className="font-black flex items-center gap-2 text-primary text-[10px] uppercase tracking-wider">
-                <ShieldAlert className="h-4 w-4" />
-                Impact Summary
-              </h4>
-              <p className="text-slate-600 leading-relaxed font-medium">{intel.potentialImpactSummary}</p>
+            <div className="p-6 rounded-2xl bg-slate-50 border-l-4 border-l-primary space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black flex items-center gap-2 text-primary text-[10px] uppercase tracking-wider">
+                  <ShieldAlert className="h-4 w-4" />
+                  Impact Summary
+                </h4>
+                {intel.groundingProof && (
+                  <div className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-tighter border border-blue-100 flex items-center gap-1">
+                    <Globe className="h-2 w-2" /> Verified Source
+                  </div>
+                )}
+              </div>
+              <p className="text-slate-600 leading-relaxed font-bold text-sm">{intel.potentialImpactSummary}</p>
+              {intel.groundingProof && (
+                <div className="bg-white/50 p-3 rounded-xl border border-dashed border-slate-200">
+                  <p className="text-[10px] text-slate-400 italic font-medium leading-relaxed">
+                    "Search Grounding: {intel.groundingProof}"
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -170,9 +190,12 @@ export default function RiskIntelPage() {
         <div className="space-y-6">
            <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
              <CardHeader className="bg-primary text-white p-6">
-                <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                  <BarChart3 className="h-5 w-5" />
-                  Live Market Shocks
+                <CardTitle className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-lg font-bold">
+                    <BarChart3 className="h-5 w-5" />
+                    Market Shocks
+                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Grounded AI Analysis</span>
                 </CardTitle>
              </CardHeader>
              <CardContent className="p-8">
