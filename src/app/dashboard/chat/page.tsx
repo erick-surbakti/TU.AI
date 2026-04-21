@@ -15,29 +15,97 @@ type Message = {
   content: string
 }
 
+// Country Names & Greetings
+const COUNTRY_GREETINGS: Record<string, { name: string; greeting: string; subtitle: string }> = {
+  BN: {
+    name: "Brunei",
+    greeting: "Selamat datang, Petani! Saya TUAI Copilot anda.",
+    subtitle: "Bagaimana saya bisa membantu tanaman anda hari ini?"
+  },
+  KH: {
+    name: "Cambodia",
+    greeting: "សូស្វាគមន៍ किSan! ខ្ញុំ TUAI Copilot របស់អ្នក។",
+    subtitle: "ខ្ញុំ​អាច​ជួយ​អ្នក​ក្នុង​ការ​ដាំដុះ​ដំណាំ​របស់​អ្នក​ថ្ងៃ​នេះ?"
+  },
+  ID: {
+    name: "Indonesia",
+    greeting: "Selamat datang, Petani! Saya TUAI Copilot anda.",
+    subtitle: "Bagaimana saya bisa membantu tanaman anda hari ini?"
+  },
+  LA: {
+    name: "Laos",
+    greeting: "ສະ​ບາຍ​ດີ​ຊາວ​ກະ​ສິ​ກອນ! ខ້ອຍ​ແມ່ນ TUAI Copilot ຂອງ​ທ່ານ​ທີ່​ດີ​ທີ່​ສຸດ.",
+    subtitle: "ວັນ​ນີ້​ໄດ້​ຊ່ວຍ​ຫຍ້າວ​ໄຣ​ຂອງ​ທ່ານ​ແນວ​ໃດ?"
+  },
+  MY: {
+    name: "Malaysia",
+    greeting: "Selamat datang, Petani! Saya TUAI Copilot anda.",
+    subtitle: "Bagaimana saya bisa membantu tanaman anda hari ini?"
+  },
+  MM: {
+    name: "Myanmar",
+    greeting: "ကျိုးကျိုးဏ္ဍာ၊ လယ်သမား! ကျွန်ုပ်သည် TUAI Copilot ဖြစ်သည်။",
+    subtitle: "ယနေ့သည် သင့်သီးနှံများကို မည်ကဲ့သို့ ကူညီနိုင်သည်နည်း?"
+  },
+  PH: {
+    name: "Philippines",
+    greeting: "Maligayang pagdating, Magsasaka! Ako ang iyong TUAI Copilot.",
+    subtitle: "Paano ko matutulungan ang iyong mga pananim ngayong araw?"
+  },
+  SG: {
+    name: "Singapore",
+    greeting: "Welcome, Farmer! I'm your TUAI Copilot.",
+    subtitle: "How can I help you with your crops today?"
+  },
+  TH: {
+    name: "Thailand",
+    greeting: "สวัสดีชาวไร่! ฉันคือ TUAI Copilot ของคุณ",
+    subtitle: "วันนี้ฉันจะช่วยให้คุณได้ผลผลิตจากพืชได้อย่างไร?"
+  },
+  VN: {
+    name: "Vietnam",
+    greeting: "Chào mừng, Nông dân! Tôi là TUAI Copilot của bạn.",
+    subtitle: "Tôi có thể giúp bạn với cây trồng của bạn ngày hôm nay như thế nào?"
+  }
+}
+
 export default function ChatAdvisorPage() {
   const fallbackKey = process.env.NEXT_PUBLIC_GROQ_API_KEY
 
-  const [messages, setMessages] = React.useState<Message[]>([
-    { role: "assistant", content: "Hello Farmer! I'm your TUAI Copilot. How can I help you with your crops today?" }
-  ])
+  const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const [groqKey, setGroqKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
   const [user, setUser] = React.useState<any>(null)
+  const [mounted, setMounted] = React.useState(false)
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   React.useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      let currentCountry = "MY"
+
       if (user) {
         setUser(user)
         const { data: profile } = await supabase.from('users').select('geminiApiKey, countryCode').eq('id', user.id).single()
         if (profile?.geminiApiKey) setGroqKey(profile.geminiApiKey)
-        if (profile?.countryCode) setCountryCode(profile.countryCode)
+        if (profile?.countryCode) {
+          currentCountry = profile.countryCode
+          setCountryCode(currentCountry)
+        }
       }
+
+      // Set initial greeting based on country
+      const countryData = COUNTRY_GREETINGS[currentCountry] || COUNTRY_GREETINGS["MY"]
+      setMessages([
+        {
+          role: "assistant",
+          content: `${countryData.greeting}\n\n${countryData.subtitle}`
+        }
+      ])
+      setMounted(true)
     }
     init()
   }, [])
@@ -50,6 +118,7 @@ export default function ChatAdvisorPage() {
 
     if (!activeKey) {
       setMessages(prev => [...prev, { role: "user", content: userMsg }])
+      const countryData = COUNTRY_GREETINGS[countryCode] || COUNTRY_GREETINGS["MY"]
       setMessages(prev => [...prev, { role: "assistant", content: "The AI service is currently unavailable. Please try again later." }])
       return
     }
@@ -68,67 +137,87 @@ export default function ChatAdvisorPage() {
   }
 
   React.useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
-      }
+    if (scrollAreaRef.current && mounted) {
+      setTimeout(() => {
+        const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]')
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight
+        }
+      }, 0)
     }
-  }, [messages])
+  }, [messages, mounted])
+
+  if (!mounted) {
+    return (
+      <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] flex flex-col max-w-5xl mx-auto rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl bg-white border items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary opacity-30" />
+      </div>
+    )
+  }
+
+  const countryData = COUNTRY_GREETINGS[countryCode] || COUNTRY_GREETINGS["MY"]
 
   return (
-    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] flex flex-col max-w-5xl mx-auto rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-white border">
+    <div className="h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] flex flex-col max-w-5xl mx-auto rounded-xl md:rounded-3xl overflow-hidden shadow-2xl bg-white border">
       {/* Header */}
       <div className="p-4 md:p-6 bg-primary text-white flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 md:h-12 md:w-12 bg-white/20 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner">
-            <Bot className="h-6 w-6 md:h-7 md:w-7 text-white" />
+          <div className="h-10 w-10 md:h-12 md:w-12 bg-white/20 rounded-lg md:rounded-2xl flex items-center justify-center shadow-inner">
+            <Bot className="h-5 w-5 md:h-6 md:w-6 text-white" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-headline font-bold leading-tight">TUAI Copilot</h2>
-            <p className="text-primary-foreground/70 text-[10px] md:text-xs">Powered by your Groq key</p>
+            <h2 className="text-base md:text-xl font-headline font-bold leading-tight">TUAI Copilot</h2>
+            <p className="text-primary-foreground/70 text-[10px] md:text-xs">
+              {countryData.name} • Powered by Groq
+            </p>
           </div>
         </div>
+        {!activeKey && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-400/20 rounded-lg">
+            <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-orange-200" />
+            <span className="text-[10px] md:text-xs font-black text-orange-100 uppercase tracking-wider">Offline</span>
+          </div>
+        )}
       </div>
 
       {!activeKey && (
         <div className="p-4 bg-orange-50 border-b border-orange-100">
-           <Alert variant="default" className="bg-orange-100 border-none rounded-2xl">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-900 font-bold">Bot Offline</AlertTitle>
-              <AlertDescription className="text-orange-800 text-xs">
-                The AI service is temporarily unavailable. Please try again later.
-              </AlertDescription>
-           </Alert>
+          <Alert variant="default" className="bg-orange-100 border-none rounded-xl md:rounded-2xl">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertTitle className="text-orange-900 font-bold text-sm">Bot Offline</AlertTitle>
+            <AlertDescription className="text-orange-800 text-xs">
+              The AI service is temporarily unavailable. Please try again later.
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 
       {/* Chat Area */}
-      <ScrollArea className="flex-1 p-4 md:p-6 bg-accent/5" ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 p-4 md:p-6 bg-gradient-to-b from-accent/5 to-white" ref={scrollAreaRef}>
         <div className="space-y-4 md:space-y-6 pb-4">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-              <div className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`h-7 w-7 md:h-8 md:w-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white border text-primary'}`}>
-                  {msg.role === 'user' ? <User className="h-4 w-4 md:h-5 md:w-5" /> : <Bot className="h-4 w-4 md:h-5 md:w-5" />}
+              <div className={`flex gap-2 md:gap-3 max-w-[92%] md:max-w-[85%] lg:max-w-[70%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`h-6 w-6 md:h-8 md:w-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-white border text-primary'}`}>
+                  {msg.role === 'user' ? <User className="h-3.5 w-3.5 md:h-5 md:w-5" /> : <Bot className="h-3.5 w-3.5 md:h-5 md:w-5" />}
                 </div>
-                <div className={`p-3 md:p-4 rounded-2xl shadow-sm text-xs md:text-sm leading-relaxed ${msg.role === 'user' ? 'bg-primary text-white rounded-tr-none' : 'bg-white border rounded-tl-none text-slate-700'}`}>
+                <div className={`p-3 md:p-4 rounded-2xl shadow-sm text-xs md:text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-white rounded-tr-none' : 'bg-white border border-slate-200 rounded-tl-none text-slate-700'}`}>
                   {msg.content}
                 </div>
               </div>
             </div>
           ))}
           {isLoading && (
-            <div className="flex justify-start">
-               <div className="flex gap-3 max-w-[85%]">
-                 <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-white border">
-                   <Bot className="h-4 w-4 text-primary" />
-                 </div>
-                 <div className="p-3 md:p-4 rounded-2xl bg-white border rounded-tl-none shadow-sm flex items-center gap-2">
-                   <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                   <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Thinking...</span>
-                 </div>
-               </div>
+            <div className="flex justify-start animate-in fade-in duration-300">
+              <div className="flex gap-2 md:gap-3 max-w-[85%]">
+                <div className="h-6 w-6 md:h-8 md:w-8 rounded-lg flex items-center justify-center shrink-0 bg-white border shadow-sm">
+                  <Bot className="h-3.5 w-3.5 md:h-5 md:w-5 text-primary" />
+                </div>
+                <div className="p-3 md:p-4 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                  <span className="text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-widest">Thinking...</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -136,23 +225,25 @@ export default function ChatAdvisorPage() {
 
       {/* Input Area */}
       <div className="p-4 md:p-6 border-t bg-white shrink-0">
-        <div className="flex gap-2 md:gap-4">
-          <Input 
+        <div className="flex gap-2 md:gap-3">
+          <Input
             placeholder={activeKey ? "Ask your question..." : "Bot offline..."}
             value={input}
-            disabled={!activeKey}
+            disabled={!activeKey || isLoading}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1 h-12 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 border-none shadow-inner text-sm"
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !isLoading && handleSend()}
+            className="flex-1 h-11 md:h-14 rounded-lg md:rounded-2xl bg-slate-50 border-slate-200 shadow-inner text-xs md:text-sm placeholder:text-slate-400"
           />
-          <Button 
+          <Button
             onClick={handleSend}
             disabled={isLoading || !input.trim() || !activeKey}
-            className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-primary text-white shadow-lg active:scale-95 transition-transform"
+            className="h-11 w-11 md:h-14 md:w-14 rounded-lg md:rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg active:scale-95 transition-all"
+            size="sm"
           >
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
         </div>
+        <p className="text-[10px] md:text-xs text-muted-foreground mt-2">Shift+Enter for new line</p>
       </div>
     </div>
   )
