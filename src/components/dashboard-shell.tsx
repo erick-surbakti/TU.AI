@@ -1,15 +1,14 @@
-
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { 
-  Sprout, 
-  ShieldAlert, 
-  MessageSquare, 
-  MapPin, 
-  ClipboardList, 
+import {
+  Sprout,
+  ShieldAlert,
+  MessageSquare,
+  MapPin,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   User,
@@ -17,7 +16,10 @@ import {
   Compass,
   Settings,
   Mic,
-  Smile
+  Smile,
+  ChevronDown,
+  Edit2,
+  Lock
 } from "lucide-react"
 import { useEasyMode } from "@/components/easy-mode-provider"
 
@@ -35,6 +37,13 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { createClient } from "@/supabase/client"
 
 const navItems = [
@@ -56,13 +65,41 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<any>(null)
   const [isUserLoading, setIsUserLoading] = React.useState(true)
   const [mounted, setMounted] = React.useState(false)
+  const [userProfile, setUserProfile] = React.useState<any>(null)
+  const [farmLocation, setFarmLocation] = React.useState<string>("Intelligence Node")
+  const [isProfileLoading, setIsProfileLoading] = React.useState(false)
+  const [isEditingProfile, setIsEditingProfile] = React.useState(false)
+  const [editedName, setEditedName] = React.useState("")
 
   const { isEasyMode, isLoading: isPrefsLoading } = useEasyMode()
 
   React.useEffect(() => {
     setMounted(true)
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user)
+
+      // Fetch user profile data from the users table
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          setUserProfile(profile)
+          // Set farm location or use displayName as fallback
+          const location = profile.farm_name || "Intelligence Node"
+          const name = profile.displayName || user.email || "User"
+          setFarmLocation(location)
+          setEditedName(name)
+        } else {
+          // First time user - set defaults
+          const name = user.email?.split('@')[0] || "User"
+          setEditedName(name)
+          setFarmLocation("Intelligence Node")
+        }
+      }
       setIsUserLoading(false)
     })
   }, [])
@@ -78,6 +115,40 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     router.push("/login")
   }
 
+  const handleProfileUpdate = async () => {
+    setIsProfileLoading(true)
+    try {
+      // Update the users table with new displayName and farm_name
+      const { error } = await supabase
+        .from('users')
+        .update({
+          displayName: editedName,
+          farm_name: farmLocation,
+          "lastLogin": new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (error) {
+        console.error("Error updating profile:", error)
+        alert("Failed to update profile. Please try again.")
+        return
+      }
+
+      // Update local state
+      setUserProfile({
+        ...userProfile,
+        displayName: editedName,
+        farm_name: farmLocation
+      })
+      setIsEditingProfile(false)
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      alert("An unexpected error occurred.")
+    } finally {
+      setIsProfileLoading(false)
+    }
+  }
+
   if (!mounted || isUserLoading || isPrefsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -86,9 +157,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     )
   }
 
-  const filteredNavItems = isEasyMode 
+  const filteredNavItems = isEasyMode
     ? navItems.filter(item => !["Pathfinder", "Risk", "Suppliers"].includes(item.title))
     : navItems;
+
+  const displayUsername = editedName || user?.email || "User"
+  const displayLocation = farmLocation || "ASEAN Intelligence Node"
 
   return (
     <SidebarProvider>
@@ -112,8 +186,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "rounded-xl transition-all duration-200 px-4",
                     isEasyMode ? "h-16" : "h-12",
-                    pathname === item.href 
-                      ? "bg-sidebar-accent text-sidebar-primary shadow-sm" 
+                    pathname === item.href
+                      ? "bg-sidebar-accent text-sidebar-primary shadow-sm"
                       : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   )}
                 >
@@ -129,7 +203,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <SidebarFooter className="p-4 border-t border-sidebar-border/30">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton 
+              <SidebarMenuButton
                 onClick={handleLogout}
                 className={cn("rounded-xl text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all", isEasyMode ? "h-16" : "h-12")}
               >
@@ -151,13 +225,107 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-             <div className="flex flex-col items-end leading-none mr-2">
-               <span className={cn("font-black text-muted-foreground uppercase tracking-widest mb-0.5 transition-all text-right", isEasyMode ? "text-[8px] sm:text-[11px]" : "text-[9px]")}>ASEAN</span>
-               <span className={cn("font-bold text-slate-700 transition-all text-right line-clamp-1", isEasyMode ? "text-sm sm:text-lg" : "text-xs")}>Intelligence Node</span>
-             </div>
-             <div className={cn("rounded-xl bg-slate-100 flex items-center justify-center text-primary shadow-inner transition-all", isEasyMode ? "h-12 w-12 sm:h-16 sm:w-16" : "h-9 w-9")}>
-               <User className={cn("transition-all", isEasyMode ? "h-8 w-8 sm:h-10 sm:w-10" : "h-5 w-5")}/>
-             </div>
+            <div className="flex flex-col items-end leading-none mr-2">
+              <span className={cn("font-black text-muted-foreground uppercase tracking-widest mb-0.5 transition-all text-right", isEasyMode ? "text-[8px] sm:text-[11px]" : "text-[9px]")}>
+                {displayLocation.toUpperCase().split(' ')[0] || "ASEAN"}
+              </span>
+              <span className={cn("font-bold text-slate-700 transition-all text-right line-clamp-1", isEasyMode ? "text-sm sm:text-lg" : "text-xs")}>
+                {displayUsername}
+              </span>
+            </div>
+
+            {/* Clickable Profile Icon with Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={cn("rounded-xl bg-slate-100 flex items-center justify-center text-primary shadow-inner transition-all hover:bg-slate-200 cursor-pointer hover:shadow-md group", isEasyMode ? "h-12 w-12 sm:h-16 sm:w-16" : "h-9 w-9")}>
+                  <User className={cn("transition-all", isEasyMode ? "h-8 w-8 sm:h-10 sm:w-10" : "h-5 w-5")} />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-56">
+                {/* Profile Info */}
+                <div className="px-4 py-3 border-b">
+                  <p className="font-semibold text-sm">{displayUsername}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground mt-1"> {displayLocation}</p>
+                </div>
+
+                {/* Edit Profile Option */}
+                {isEditingProfile ? (
+                  <>
+                    <div className="px-4 py-3 border-b space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground">Full Name</label>
+                        <input
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          className="w-full mt-1 px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Enter your name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-muted-foreground">Farm/Location</label>
+                        <input
+                          type="text"
+                          value={farmLocation}
+                          onChange={(e) => setFarmLocation(e.target.value)}
+                          className="w-full mt-1 px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          placeholder="Enter farm name or location"
+                        />
+                      </div>
+                    </div>
+                    <div className="px-2 py-2 flex gap-2 border-b">
+                      <Button
+                        size="sm"
+                        onClick={handleProfileUpdate}
+                        disabled={isProfileLoading}
+                        className="flex-1 bg-primary hover:bg-primary/90"
+                      >
+                        {isProfileLoading ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsEditingProfile(false)}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={() => setIsEditingProfile(true)} className="cursor-pointer">
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </DropdownMenuItem>
+                )}
+
+                {/* Settings */}
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/dashboard/settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+
+                {/* Change Password */}
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/dashboard/change-password">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Change Password
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Logout */}
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -168,7 +336,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </main>
 
         {isEasyMode && (
-          <Button 
+          <Button
             className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 h-20 w-20 sm:h-28 sm:w-28 rounded-full shadow-2xl bg-emerald-600 hover:bg-emerald-700 text-white z-[9999] animate-bounce flex flex-col items-center justify-center gap-0.5 sm:gap-1 border-4 border-white ring-4 ring-emerald-500/20"
             onClick={() => router.push('/dashboard/chat')}
           >
