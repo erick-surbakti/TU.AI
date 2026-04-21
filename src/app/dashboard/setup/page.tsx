@@ -40,6 +40,100 @@ import Link from "next/link"
 import { ASEAN_COUNTRIES, getRegionalContext } from "@/lib/localization"
 import { logPathfinder } from "@/lib/lib-activity-logger"
 
+type BudgetTier = "small" | "commercial" | "enterprise"
+
+type BudgetRange = {
+  small: { min: number; max: number }
+  commercial: { min: number; max: number }
+  enterprise: { min: number }
+}
+
+const BUDGET_RANGES: Record<string, BudgetRange> = {
+  BN: {
+    small: { min: 0, max: 200 },
+    commercial: { min: 2000, max: 8000 },
+    enterprise: { min: 20000 },
+  },
+  KH: {
+    small: { min: 0, max: 600000 },
+    commercial: { min: 6000000, max: 24000000 },
+    enterprise: { min: 60000000 },
+  },
+  ID: {
+    small: { min: 0, max: 2000000 },
+    commercial: { min: 20000000, max: 80000000 },
+    enterprise: { min: 200000000 },
+  },
+  LA: {
+    small: { min: 0, max: 1000000 },
+    commercial: { min: 10000000, max: 40000000 },
+    enterprise: { min: 100000000 },
+  },
+  MY: {
+    small: { min: 0, max: 500 },
+    commercial: { min: 5000, max: 20000 },
+    enterprise: { min: 50000 },
+  },
+  MM: {
+    small: { min: 0, max: 100000 },
+    commercial: { min: 1000000, max: 4000000 },
+    enterprise: { min: 10000000 },
+  },
+  PH: {
+    small: { min: 0, max: 6000 },
+    commercial: { min: 60000, max: 240000 },
+    enterprise: { min: 600000 },
+  },
+  SG: {
+    small: { min: 0, max: 200 },
+    commercial: { min: 2000, max: 8000 },
+    enterprise: { min: 20000 },
+  },
+  TH: {
+    small: { min: 0, max: 4000 },
+    commercial: { min: 40000, max: 160000 },
+    enterprise: { min: 400000 },
+  },
+  VN: {
+    small: { min: 0, max: 3000000 },
+    commercial: { min: 30000000, max: 120000000 },
+    enterprise: { min: 300000000 },
+  },
+}
+
+function getCountryCodeFromName(countryName: string): string {
+  const found = Object.values(ASEAN_COUNTRIES).find((c) => c.name === countryName)
+  return found?.code || "MY"
+}
+
+function getBudgetTier(value: string): BudgetTier {
+  const normalized = value.toLowerCase()
+  if (normalized.includes("enterprise")) return "enterprise"
+  if (normalized.includes("commercial") || normalized.includes("com")) return "commercial"
+  if (value.includes("50,000") || value.includes("50.000") || normalized.includes("50k")) return "enterprise"
+  if (value.includes("5,000") || value.includes("5.000") || normalized.includes("5k")) return "commercial"
+  return "small"
+}
+
+function formatBudgetAmount(amount: number, countryCode: string): string {
+  const config = ASEAN_COUNTRIES[countryCode] || ASEAN_COUNTRIES["MY"]
+  const formatted = amount.toLocaleString("en-US")
+  return config.currency.symbolOnLeft
+    ? `${config.currency.symbol} ${formatted}`
+    : `${formatted} ${config.currency.symbol}`
+}
+
+function formatBudgetByTier(countryCode: string, tier: BudgetTier): string {
+  const ranges = BUDGET_RANGES[countryCode] || BUDGET_RANGES.MY
+  if (tier === "commercial") {
+    return `${formatBudgetAmount(ranges.commercial.min, countryCode)}-${formatBudgetAmount(ranges.commercial.max, countryCode)} (Commercial)`
+  }
+  if (tier === "enterprise") {
+    return `${formatBudgetAmount(ranges.enterprise.min, countryCode)}+ (Enterprise)`
+  }
+  return `${formatBudgetAmount(ranges.small.min, countryCode)}-${formatBudgetAmount(ranges.small.max, countryCode)} (Small Scale)`
+}
+
 export default function FarmSetupPage() {
   const [loading, setLoading] = React.useState(false)
   const [result, setResult] = React.useState<FarmSetupOutput | null>(null)
@@ -50,6 +144,7 @@ export default function FarmSetupPage() {
   const [user, setUser] = React.useState<any>(null)
   const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
+  const currentCountryConfig = ASEAN_COUNTRIES[countryCode] || ASEAN_COUNTRIES["MY"]
   
   const [formData, setFormData] = React.useState({
     status: 'beginner' as 'beginner' | 'existing',
@@ -81,7 +176,7 @@ export default function FarmSetupPage() {
     hasLand: false,
     motivation: '',
     goals: [] as string[],
-    budget: 'RM 0–500',
+    budget: formatBudgetByTier("MY", "small"),
     helpType: 'Daily alerts',
   })
 
@@ -102,7 +197,7 @@ export default function FarmSetupPage() {
               ...prev.basicInfo,
               country: config.name
             },
-            budget: `${config.currency.symbol} 0–500`
+            budget: formatBudgetByTier(code, getBudgetTier(prev.budget))
           }))
         }
       }
@@ -221,7 +316,19 @@ export default function FarmSetupPage() {
                <div className="grid grid-cols-1 gap-4">
                  <div className="space-y-2">
                    <Label className="font-bold text-slate-700">Country</Label>
-                   <Select value={formData.basicInfo.country} onValueChange={(v) => setFormData(p => ({...p, basicInfo: {...p.basicInfo, country: v}}))}>
+                   <Select
+                     value={formData.basicInfo.country}
+                     onValueChange={(v) => {
+                       const nextCode = getCountryCodeFromName(v)
+                       const nextConfig = ASEAN_COUNTRIES[nextCode] || ASEAN_COUNTRIES["MY"]
+                       setCountryCode(nextCode)
+                       setFormData(p => ({
+                         ...p,
+                         basicInfo: { ...p.basicInfo, country: v },
+                         budget: formatBudgetByTier(nextCode, getBudgetTier(p.budget)),
+                       }))
+                     }}
+                   >
                      <SelectTrigger className="rounded-xl h-12 bg-white border-slate-200"><SelectValue /></SelectTrigger>
                      <SelectContent>
                         {Object.values(ASEAN_COUNTRIES).map(c => (
@@ -427,9 +534,9 @@ export default function FarmSetupPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="RM 0–500 (Small Scale)">RM 0–500 (Small)</SelectItem>
-                        <SelectItem value="RM 5,000–20,000 (Commercial)">RM 5k–20k (Com)</SelectItem>
-                        <SelectItem value="RM 50,000+ (Enterprise)">RM 50k+ (Ent)</SelectItem>
+                        <SelectItem value={formatBudgetByTier(countryCode, "small")}>{formatBudgetByTier(countryCode, "small")}</SelectItem>
+                        <SelectItem value={formatBudgetByTier(countryCode, "commercial")}>{formatBudgetByTier(countryCode, "commercial")}</SelectItem>
+                        <SelectItem value={formatBudgetByTier(countryCode, "enterprise")}>{formatBudgetByTier(countryCode, "enterprise")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground font-medium italic">
