@@ -55,7 +55,7 @@ export default function RecordsPage() {
     totalCosts: 1500,
     actualHarvest: 5000,
     marketPrice: 1.45, // RM/kg
-    legalStatus: 'Individual' as any
+    legalStatus: 'Individual' as 'Individual' | 'Cooperative' | 'Registered Company'
   })
 
   // Audit Result State
@@ -93,7 +93,29 @@ export default function RecordsPage() {
 
   const runAudit = async () => {
     if (!geminiKey) {
-      toast({ variant: "destructive", title: "API Key Required", description: "Please add your Gemini key in Settings." })
+      toast({ 
+        variant: "destructive", 
+        title: "API Key Required", 
+        description: "Please add your Gemini API key in Settings to use the audit feature." 
+      })
+      return
+    }
+
+    // Validate inputs
+    if (auditForm.landSize <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Land size must be greater than 0."
+      })
+      return
+    }
+    if (auditForm.actualHarvest <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Actual harvest must be greater than 0."
+      })
       return
     }
 
@@ -102,12 +124,21 @@ export default function RecordsPage() {
       const result = await runFarmAudit({
         ...auditForm,
         countryCode: countryCode,
-        apiKey: geminiKey
+        apiKey: geminiKey,
+        marketPrice: auditForm.marketPrice
       })
       setAuditResult(result)
-      toast({ title: "Audit Complete", description: "Check the Investors tab for matches!" })
-    } catch (e) {
-      toast({ variant: "destructive", title: "Audit Failed", description: "Please try again later." })
+      toast({ 
+        title: "Audit Complete", 
+        description: "Your farm audit has been generated. Check the Investors tab for potential matches!" 
+      })
+    } catch (e: any) {
+      console.error("Audit error:", e)
+      toast({ 
+        variant: "destructive", 
+        title: "Audit Failed", 
+        description: e.message || "Please check your API key and try again later." 
+      })
     } finally {
       setIsAuditing(false)
     }
@@ -186,6 +217,8 @@ export default function RecordsPage() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Harvest Weight (kg)</label>
                     <Input
                       type="number"
+                      min="0"
+                      step="0.1"
                       value={auditForm.actualHarvest}
                       onChange={(e) => setAuditForm({ ...auditForm, actualHarvest: Number(e.target.value) })}
                       className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold text-primary"
@@ -196,15 +229,35 @@ export default function RecordsPage() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Op. Expenses ({ASEAN_COUNTRIES[countryCode]?.currency.symbol})</label>
                     <Input
                       type="number"
+                      min="0"
+                      step="0.01"
                       value={auditForm.totalCosts}
                       onChange={(e) => setAuditForm({ ...auditForm, totalCosts: Number(e.target.value) })}
                       className="h-12 rounded-xl bg-slate-100/50 border-none shadow-inner"
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Market Price per kg ({ASEAN_COUNTRIES[countryCode]?.currency.symbol})</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={auditForm.marketPrice}
+                      onChange={(e) => setAuditForm({ ...auditForm, marketPrice: Number(e.target.value) })}
+                      className="h-12 rounded-xl bg-slate-50 border-none shadow-inner"
+                      placeholder="e.g., 1.45"
+                    />
+                  </div>
+
                   <div className="space-y-2 pt-4">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Legal Entity Status</label>
-                    <Select value={auditForm.legalStatus} onValueChange={(v) => setAuditForm({ ...auditForm, legalStatus: v })}>
+                    <Select 
+                      value={auditForm.legalStatus} 
+                      onValueChange={(v: 'Individual' | 'Cooperative' | 'Registered Company') => 
+                        setAuditForm({ ...auditForm, legalStatus: v })
+                      }
+                    >
                       <SelectTrigger className="h-14 rounded-2xl bg-primary/5 border-primary/20 text-primary font-bold">
                         <SelectValue />
                       </SelectTrigger>
@@ -236,12 +289,17 @@ export default function RecordsPage() {
                     <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                       <TrendingUp className="h-6 w-6" />
                     </div>
-                    <Badge className="bg-emerald-500 text-white border-none rounded-full px-4 py-1 text-xs font-bold">ROI POSITIVE</Badge>
+                    <Badge className={`${profit >= 0 ? 'bg-emerald-500' : 'bg-red-500'} text-white border-none rounded-full px-4 py-1 text-xs font-bold`}>
+                      {profit >= 0 ? 'ROI POSITIVE' : 'ROI NEGATIVE'}
+                    </Badge>
                   </div>
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estimated Net Profit</h4>
-                  <div className="text-4xl font-headline font-bold text-slate-800">{formatCurrency(profit, countryCode)}</div>
-                  <p className="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1">
-                    +12.5% vs Last Period <Sparkles className="h-3 w-3" />
+                  <div className={`text-4xl font-headline font-bold ${profit >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                    {formatCurrency(profit, countryCode)}
+                  </div>
+                  <p className={`text-xs ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'} font-bold mt-2 flex items-center gap-1`}>
+                    {profit >= 0 ? '+' : ''}{profit >= 0 ? '12.5%' : 'Check expenses'} vs Last Period 
+                    {profit >= 0 && <Sparkles className="h-3 w-3" />}
                   </p>
                 </Card>
 
