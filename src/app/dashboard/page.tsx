@@ -39,10 +39,24 @@ export default function DashboardPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        if (user.user_metadata?.display_name) {
-          setUserName(user.user_metadata.display_name.split(' ')[0])
+        const metadataName =
+          user.user_metadata?.display_name ||
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name
+
+        if (typeof metadataName === 'string' && metadataName.trim()) {
+          setUserName(metadataName.split(' ')[0])
         }
-        const { data: profile } = await supabase.from('users').select('countryCode, geminiApiKey').eq('id', user.id).single()
+
+        const { data: profile } = await supabase
+          .from('users')
+          .select('displayName, countryCode, geminiApiKey')
+          .eq('id', user.id)
+          .single()
+
+        if (profile?.displayName && (!metadataName || !String(metadataName).trim())) {
+          setUserName(profile.displayName.split(' ')[0])
+        }
         if (profile?.countryCode) setCountryCode(profile.countryCode)
         if (profile?.geminiApiKey) setApiKey(profile.geminiApiKey)
       }
