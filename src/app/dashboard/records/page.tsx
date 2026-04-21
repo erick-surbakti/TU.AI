@@ -34,6 +34,7 @@ import { ASEAN_COUNTRIES, formatCurrency } from "@/lib/localization"
 import { runFarmAudit, type FarmAuditOutput } from "@/ai/flows/farm-audit-flow"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { logFarmAudit } from "@/lib/lib-activity-logger"
 
 export default function RecordsPage() {
   const supabase = createClient()
@@ -128,6 +129,7 @@ export default function RecordsPage() {
         marketPrice: auditForm.marketPrice
       })
       setAuditResult(result)
+      await logFarmAudit(auditForm.cropType, result.efficiencyScore, result.readinessScore)
       toast({ 
         title: "Audit Complete", 
         description: "Your farm audit has been generated. Check the Investors tab for potential matches!" 

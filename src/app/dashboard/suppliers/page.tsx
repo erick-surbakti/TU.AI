@@ -14,6 +14,7 @@ import { createClient } from "@/supabase/client"
 import { ASEAN_COUNTRIES } from "@/lib/localization"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
+import { logSupplierSearch } from "@/lib/lib-activity-logger"
 
 export default function SuppliersPage() {
   const [query, setQuery] = React.useState("")
@@ -110,6 +111,7 @@ export default function SuppliersPage() {
         apiKey: activeKey
       })
       setResults(output)
+      await logSupplierSearch(query, output.suppliers?.length || 0, countryCode)
     } catch (error) {
       toast({
         variant: "destructive",

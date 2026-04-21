@@ -200,7 +200,7 @@ export function ActivityLog({ limit = 3, showFullLog = false }: ActivityLogProps
 
                 {/* View Full Log Button (if not already on full log page) */}
                 {!showFullLog && activities.length > 0 && (
-                    <Link href="/dashboard/records">
+                    <Link href="/dashboard/activity">
                         <Button variant="ghost" className="w-full mt-10 h-14 rounded-2xl text-primary font-black text-lg hover:bg-primary/5">
                             VIEW FULL ACTIVITY LOG
                         </Button>

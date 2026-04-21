@@ -12,6 +12,9 @@ export type ActivityType =
     | "fertilizer_recommendation"
     | "farm_setup"
     | "market_alert"
+    | "farm_audit"
+    | "news_refresh"
+    | "supplier_search"
 
 export type IconType = "scan" | "setup" | "market" | "weather" | "fertilizer"
 
@@ -174,6 +177,69 @@ export async function logFertilizerRecommendation(
             crop_type: cropType,
             recommendation,
             dosage
+        }
+    })
+}
+
+/**
+ * Log a farm audit activity
+ */
+export async function logFarmAudit(
+    cropType: string,
+    efficiencyScore: number,
+    readinessScore: number
+) {
+    return logActivity({
+        activity_type: "farm_audit",
+        title: `Farm Audit: ${cropType}`,
+        result: `Efficiency ${Math.round(efficiencyScore)}% | Readiness ${Math.round(readinessScore)}%`,
+        icon_type: "setup",
+        metadata: {
+            crop_type: cropType,
+            efficiency_score: efficiencyScore,
+            readiness_score: readinessScore,
+        }
+    })
+}
+
+/**
+ * Log a news intelligence refresh activity
+ */
+export async function logNewsRefresh(
+    category: "local" | "global",
+    countryCode: string,
+    articleCount: number
+) {
+    return logActivity({
+        activity_type: "news_refresh",
+        title: `AI News Refresh: ${category}`,
+        result: `${articleCount} articles generated`,
+        icon_type: "market",
+        metadata: {
+            category,
+            country_code: countryCode,
+            article_count: articleCount,
+        }
+    })
+}
+
+/**
+ * Log a supplier finder search activity
+ */
+export async function logSupplierSearch(
+    item: string,
+    supplierCount: number,
+    countryCode: string
+) {
+    return logActivity({
+        activity_type: "supplier_search",
+        title: `Supplier Search: ${item}`,
+        result: `${supplierCount} suppliers found`,
+        icon_type: "market",
+        metadata: {
+            item,
+            supplier_count: supplierCount,
+            country_code: countryCode,
         }
     })
 }

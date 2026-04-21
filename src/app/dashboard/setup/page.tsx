@@ -38,6 +38,7 @@ import { AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 import { ASEAN_COUNTRIES, getRegionalContext } from "@/lib/localization"
+import { logPathfinder } from "@/lib/lib-activity-logger"
 
 export default function FarmSetupPage() {
   const [loading, setLoading] = React.useState(false)
@@ -143,6 +144,12 @@ export default function FarmSetupPage() {
     try {
       const output = await farmSetupGuide({ ...formData, apiKey: geminiKey, countryCode: countryCode })
       setResult(output)
+
+      await logPathfinder(
+        formData.basicInfo.farmName || "AI Planned Farm",
+        formData.farmType || formData.targetCrop || "General farming",
+        output.roadmap?.[0] || "Roadmap generated"
+      )
 
       if (user) {
         supabase.from('farms').insert({

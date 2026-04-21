@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { createClient } from "@/supabase/client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
+import { logNewsRefresh } from "@/lib/lib-activity-logger"
 
 // ASEAN Country Names
 const COUNTRY_NAMES: Record<string, string> = {
@@ -647,6 +648,8 @@ export default function NewsPage() {
         setGlobalArticles(results)
         localStorage.setItem(`tuai_news_global_${today}`, JSON.stringify(results))
       }
+
+      await logNewsRefresh(category, countryCode, results.length)
 
       toast({ title: "Intelligence Refreshed", description: `Successfully generated ${category} news batch.` })
     } catch (error) {

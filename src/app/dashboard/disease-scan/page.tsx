@@ -11,6 +11,7 @@ import Image from "next/image"
 import { createClient } from "@/supabase/client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
+import { logDiseaseScan } from "@/lib/lib-activity-logger"
 
 export default function DiseaseScanPage() {
   const supabase = createClient()
@@ -74,7 +75,7 @@ export default function DiseaseScanPage() {
       })
       setResult(output)
 
-      await supabase.from('crop_scan_results').insert({
+      const { data: savedScan } = await supabase.from('crop_scan_results').insert({
         user_id: user.id,
         image_url: "simulated_path",
         scanDate: new Date().toISOString(),
@@ -82,7 +83,14 @@ export default function DiseaseScanPage() {
         confidenceScore: output.confidenceScore,
         recommendation: output.treatmentRecommendation,
         status: "Processed"
-      })
+      }).select('id').single()
+
+      await logDiseaseScan(
+        output.diseaseName || "Unknown",
+        Number(output.confidenceScore || 0),
+        output.treatmentRecommendation || "No recommendation provided",
+        String(savedScan?.id || new Date().toISOString())
+      )
 
       const { data: history } = await supabase.from('crop_scan_results').select('*').eq('user_id', user.id).order('scanDate', { ascending: false }).limit(5)
       if (history) setScanHistory(history)
