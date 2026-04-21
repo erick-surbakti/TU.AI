@@ -404,10 +404,7 @@ export default function RecordsPage() {
                   <p className="text-sm text-slate-400">You must run a Farm Audit first to unlock the Investor Matchmaking engine.</p>
                 </div>
                 <Button
-                  onClick={() => {
-                    const tabTrigger = document.querySelector('[value="audit"]') as HTMLElement
-                    tabTrigger?.click()
-                  }}
+                  onClick={() => window.open('https://tuai-form.vercel.app/', '_blank')}
                   className="rounded-2xl h-14 px-10 font-bold bg-primary"
                 >
                   Go to

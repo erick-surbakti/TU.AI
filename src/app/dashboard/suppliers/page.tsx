@@ -274,7 +274,7 @@ export default function SuppliersPage() {
                    AI-powered scanning of regional inventory levels. Your detected location: 
                    <br/><span className="font-mono text-xs mt-2 opacity-100">{location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Detecting..."}</span>
                  </p>
-                 <Button className="bg-white text-primary hover:bg-white/90 rounded-full font-bold px-10 h-14 shadow-2xl">Open Full Map</Button>
+                 <Button onClick={() => window.open('https://tuai-form.vercel.app/', '_blank')} className="bg-white text-primary hover:bg-white/90 rounded-full font-bold px-10 h-14 shadow-2xl">Open Full Map</Button>
               </div>
            </Card>
 
