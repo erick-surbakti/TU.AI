@@ -139,6 +139,28 @@ export default function DiseaseScanPage() {
               </div>
               <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} capture="environment" />
               
+              {image && (
+                <div className="flex gap-3 w-full md:max-w-md mx-auto">
+                  <Button 
+                    variant="outline"
+                    className="flex-1 h-11 rounded-xl font-semibold"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Change Photo
+                  </Button>
+                  <Button 
+                    variant="ghost"
+                    className="flex-1 h-11 rounded-xl font-semibold text-destructive hover:text-destructive hover:bg-red-100 border-2 border-red-500 bg-red-50"
+                    onClick={() => {
+                      setImage(null)
+                      if (fileInputRef.current) fileInputRef.current.value = ""
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+              
               <Textarea 
                 placeholder="Describe symptoms..."
                 value={description}
