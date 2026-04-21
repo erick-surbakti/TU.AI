@@ -51,6 +51,12 @@ export default function FarmSetupPage() {
   const [geminiKey, setGeminiKey] = React.useState<string | null>(null)
   const [countryCode, setCountryCode] = React.useState<string>("MY")
   
+  const [formErrors, setFormErrors] = React.useState({
+    landArea: '',
+    averageYield: '',
+    feedUsage: ''
+  })
+  
   const [formData, setFormData] = React.useState({
     status: 'beginner' as 'beginner' | 'existing',
     basicInfo: {
@@ -83,6 +89,7 @@ export default function FarmSetupPage() {
     goals: [] as string[],
     budget: 'RM 0–500',
     helpType: 'Daily alerts',
+    sizeValueString: '', // For storing the string version
   })
 
   React.useEffect(() => {
@@ -127,6 +134,36 @@ export default function FarmSetupPage() {
         ? prev.goals.filter(g => g !== goal)
         : [...prev.goals, goal]
     }))
+  }
+
+  const validateNumericInput = (value: string, fieldName: 'landArea' | 'averageYield' | 'feedUsage') => {
+    // Check if value is negative or starts with minus
+    if (value.includes('-')) {
+      setFormErrors(prev => ({
+        ...prev,
+        [fieldName]: '❌ Negative values are not allowed. Enter 0 or higher.'
+      }))
+      // Return sanitized version without the minus
+      return value.replace(/[^\d.]/g, '')
+    }
+    
+    // Check for letters or invalid symbols (anything that's not digit or decimal point)
+    if (/[^\d.]/.test(value) && value !== '') {
+      setFormErrors(prev => ({
+        ...prev,
+        [fieldName]: '❌ Only numbers (0-9) and decimal point are allowed.'
+      }))
+      // Return sanitized version
+      return value.replace(/[^\d.]/g, '')
+    }
+
+    // Clear error if valid
+    setFormErrors(prev => ({
+      ...prev,
+      [fieldName]: ''
+    }))
+    
+    return value
   }
 
   const handleStartPlanning = async () => {
@@ -183,6 +220,87 @@ export default function FarmSetupPage() {
 
   const nextStep = () => setStep(s => s + 1)
   const prevStep = () => setStep(s => s - 1)
+
+  const validateStep = (currentStep: number): boolean => {
+    switch (currentStep) {
+      case 1:
+        // Basic info validation
+        if (!formData.basicInfo.farmName.trim()) {
+          toast({ variant: "destructive", title: "Farm Name is required" })
+          return false
+        }
+        if (!formData.basicInfo.country.trim()) {
+          toast({ variant: "destructive", title: "Country is required" })
+          return false
+        }
+        if (!formData.basicInfo.region.trim()) {
+          toast({ variant: "destructive", title: "Region/State is required" })
+          return false
+        }
+        return true
+
+      case 2:
+        if (formData.status === 'existing') {
+          // Existing farm validation
+          if (!formData.farmType.trim()) {
+            toast({ variant: "destructive", title: "Main Crop/Plant Type is required" })
+            return false
+          }
+          if (formData.sizeValue <= 0) {
+            toast({ variant: "destructive", title: "Land Area must be greater than 0" })
+            return false
+          }
+          if (formData.hasLivestock && !formData.livestockDetails.trim()) {
+            toast({ variant: "destructive", title: "Please specify your livestock details" })
+            return false
+          }
+        } else {
+          // New farmer validation
+          if (!formData.targetCrop.trim()) {
+            toast({ variant: "destructive", title: "Please specify what you want to plant/raise" })
+            return false
+          }
+        }
+        return true
+
+      case 3:
+        if (formData.status === 'existing') {
+          // Existing farm: at least one problem must be selected
+          if (formData.problems.length === 0) {
+            toast({ variant: "destructive", title: "Please select at least one pain point" })
+            return false
+          }
+        } else {
+          // New farmer: motivation and at least one goal
+          if (!formData.motivation.trim()) {
+            toast({ variant: "destructive", title: "Please describe your farming motivation" })
+            return false
+          }
+          if (formData.goals.length === 0) {
+            toast({ variant: "destructive", title: "Please select at least one goal" })
+            return false
+          }
+        }
+        return true
+
+      case 4:
+        if (formData.status === 'existing') {
+          // Existing farm: production data
+          if (!formData.productionData.averageYield || Number(formData.productionData.averageYield) <= 0) {
+            toast({ variant: "destructive", title: "Average Yield must be a positive number" })
+            return false
+          }
+          if (!formData.productionData.feedUsage || Number(formData.productionData.feedUsage) <= 0) {
+            toast({ variant: "destructive", title: "Monthly Usage must be a positive number" })
+            return false
+          }
+        }
+        return true
+
+      default:
+        return true
+    }
+  }
 
   if (!mounted) return null
 
@@ -241,7 +359,7 @@ export default function FarmSetupPage() {
                  </div>
                </div>
             </div>
-            <Button onClick={nextStep} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg active:scale-95 transition-all">
+            <Button onClick={() => validateStep(1) && nextStep()} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg active:scale-95 transition-all">
               Continue <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -266,11 +384,16 @@ export default function FarmSetupPage() {
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Land Area</Label>
                     <Input 
-                      type="number"
-                      value={formData.sizeValue}
-                      onChange={(e) => setFormData(p => ({...p, sizeValue: Number(e.target.value)}))}
-                      className="rounded-xl h-12"
+                      type="text"
+                      value={formData.sizeValueString}
+                      onChange={(e) => {
+                        const sanitized = validateNumericInput(e.target.value, 'landArea')
+                        setFormData(p => ({...p, sizeValueString: sanitized, sizeValue: Number(sanitized) || 0}))
+                      }}
+                      className={`rounded-xl h-12 ${formErrors.landArea ? 'border-red-500 border-2' : ''}`}
+                      placeholder="e.g. 5.5"
                     />
+                    {formErrors.landArea && <p className="text-sm text-red-600 font-semibold">{formErrors.landArea}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold text-slate-700">Unit</Label>
@@ -331,7 +454,7 @@ export default function FarmSetupPage() {
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold">Back</Button>
-              <Button onClick={nextStep} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Next</Button>
+              <Button onClick={() => validateStep(2) && nextStep()} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Next</Button>
             </div>
           </div>
         )
@@ -386,7 +509,7 @@ export default function FarmSetupPage() {
             )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold">Back</Button>
-              <Button onClick={nextStep} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Next</Button>
+              <Button onClick={() => validateStep(3) && nextStep()} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Next</Button>
             </div>
           </div>
         )
@@ -403,18 +526,26 @@ export default function FarmSetupPage() {
                         <Input 
                           placeholder="e.g. 5.5 tons/hectare"
                           value={formData.productionData.averageYield} 
-                          onChange={(e) => setFormData(p => ({...p, productionData: {...p.productionData, averageYield: e.target.value}}))} 
-                          className="rounded-xl h-12" 
+                          onChange={(e) => {
+                            const sanitized = validateNumericInput(e.target.value, 'averageYield')
+                            setFormData(p => ({...p, productionData: {...p.productionData, averageYield: sanitized}}))
+                          }} 
+                          className={`rounded-xl h-12 ${formErrors.averageYield ? 'border-red-500 border-2' : ''}`}
                         />
+                        {formErrors.averageYield && <p className="text-sm text-red-600 font-semibold">{formErrors.averageYield}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label className="text-sm font-bold text-slate-600">Monthly Usage (Feed/Fertilizer)</Label>
                         <Input 
                           placeholder="e.g. 500kg NPK"
                           value={formData.productionData.feedUsage} 
-                          onChange={(e) => setFormData(p => ({...p, productionData: {...p.productionData, feedUsage: e.target.value}}))} 
-                          className="rounded-xl h-12" 
+                          onChange={(e) => {
+                            const sanitized = validateNumericInput(e.target.value, 'feedUsage')
+                            setFormData(p => ({...p, productionData: {...p.productionData, feedUsage: sanitized}}))
+                          }} 
+                          className={`rounded-xl h-12 ${formErrors.feedUsage ? 'border-red-500 border-2' : ''}`}
                         />
+                        {formErrors.feedUsage && <p className="text-sm text-red-600 font-semibold">{formErrors.feedUsage}</p>}
                       </div>
                    </div>
                  </div>
@@ -441,7 +572,7 @@ export default function FarmSetupPage() {
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={prevStep} className="flex-1 h-14 rounded-2xl font-bold">Back</Button>
-              <Button onClick={nextStep} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Review</Button>
+              <Button onClick={() => validateStep(4) && nextStep()} className="flex-1 h-14 rounded-2xl bg-primary text-white font-bold">Review</Button>
             </div>
           </div>
         )
