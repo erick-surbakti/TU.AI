@@ -255,7 +255,7 @@ Make realistic estimates for ${countryName} based on typical ASEAN climate patte
                                         <div className="text-2xl font-black text-slate-800 tracking-tighter">
                                             {Math.round(weather.temp)}°C
                                         </div>
-                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Temperature</div>
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Temp</div>
                                     </div>
                                 </div>
                             </div>
