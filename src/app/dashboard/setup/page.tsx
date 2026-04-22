@@ -18,7 +18,9 @@ import {
   Zap,
   MapPin,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  BookOpen,      // <-- NEW IMPORT
+  ExternalLink   // <-- NEW IMPORT
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -39,6 +41,8 @@ import Link from "next/link"
 
 import { ASEAN_COUNTRIES, getRegionalContext } from "@/lib/localization"
 import { logPathfinder } from "@/lib/lib-activity-logger"
+import { savePathfinderReport } from "@/lib/pathfinder-reports" // <-- NEW IMPORT
+import { createPendingPathfinderReport } from "@/lib/pathfinder-pending-reports"
 
 type BudgetTier = "small" | "commercial" | "enterprise"
 
@@ -137,6 +141,7 @@ function formatBudgetByTier(countryCode: string, tier: BudgetTier): string {
 export default function FarmSetupPage() {
   const [loading, setLoading] = React.useState(false)
   const [result, setResult] = React.useState<FarmSetupOutput | null>(null)
+  const [savedReportId, setSavedReportId] = React.useState<string | null>(null) // <-- NEW STATE
   const [step, setStep] = React.useState(1)
   const [mounted, setMounted] = React.useState(false)
   const { toast } = useToast()
@@ -263,6 +268,7 @@ export default function FarmSetupPage() {
 
   const handleStartPlanning = async () => {
     setLoading(true)
+    setSavedReportId(null) // Reset setiap kali generate
     if (!geminiKey) {
       toast({
         variant: "destructive",
@@ -277,11 +283,43 @@ export default function FarmSetupPage() {
       const output = await farmSetupGuide({ ...formData, apiKey: geminiKey, countryCode: countryCode })
       setResult(output)
 
-      await logPathfinder(
-        formData.basicInfo.farmName || "AI Planned Farm",
-        formData.farmType || formData.targetCrop || "General farming",
-        output.roadmap?.[0] || "Roadmap generated"
-      )
+      // ── NEW: Persist to DB ──────────────────────────────
+      const saved = await savePathfinderReport({
+        countryCode: countryCode,
+        input: formData as any,
+        output: output,
+      });
+
+      if (saved) {
+        setSavedReportId(saved.id);
+        
+        // Log dengan saved.id supaya bisa diklik dari dashboard activity log
+        await logPathfinder(
+          formData.basicInfo.farmName || "AI Planned Farm",
+          formData.farmType || formData.targetCrop || "General farming",
+          saved.id 
+        )
+      } else {
+        const pending = createPendingPathfinderReport({
+          countryCode,
+          input: formData as any,
+          output,
+        })
+
+        setSavedReportId(pending.id)
+
+        // If save fails, keep activity but without report deep-link.
+        await logPathfinder(
+          formData.basicInfo.farmName || "AI Planned Farm",
+          formData.farmType || formData.targetCrop || "General farming"
+        )
+
+        toast({
+          title: "Report saved locally",
+          description: "Cloud save is pending. You can still reopen this report from Reports.",
+        })
+      }
+      // ──────────────────────────────────────────────────────
 
       if (user) {
         supabase.from('farms').insert({
@@ -725,6 +763,14 @@ export default function FarmSetupPage() {
           <h2 className="text-3xl font-headline font-bold text-slate-900 leading-tight">Farm Intelligence</h2>
           <p className="text-sm text-muted-foreground mt-1 font-medium italic">Audit your farm or start a new path to zero dependency.</p>
         </div>
+        <div className="flex">
+          <Link href="/dashboard/setup/reports">
+            <Button variant="outline" className="rounded-full font-bold gap-2">
+              <BookOpen className="h-4 w-4" />
+              See Previous Reports
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {!geminiKey && (
@@ -902,6 +948,32 @@ export default function FarmSetupPage() {
                   ))}
                 </CardContent>
               </Card>
+
+              {/* ── NEW: CTA Button Report Saved ── */}
+              {savedReportId && (
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-6 rounded-[2rem] bg-primary/5 border border-primary/15 mt-6">
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-800">Report saved!</p>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      Your Pathfinder plan is stored and can be revisited any time.
+                    </p>
+                  </div>
+                  <div className="flex gap-3 flex-shrink-0">
+                    <Link href="/dashboard/setup/reports">
+                      <Button variant="outline" className="rounded-full font-bold gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        All Reports
+                      </Button>
+                    </Link>
+                    <Link href={`/dashboard/setup/reports/${savedReportId}`}>
+                      <Button className="rounded-full font-bold bg-primary hover:bg-primary/90 gap-2">
+                        <ExternalLink className="h-4 w-4" />
+                        View Full Report & PDF
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full min-h-[500px] flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm border-2 border-dashed rounded-[3rem] p-12 text-center gap-8 shadow-inner group">
