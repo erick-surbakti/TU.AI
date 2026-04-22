@@ -240,26 +240,62 @@ export default function SettingsPage() {
 
     setIsDeletingAccount(true)
     try {
-      // First, delete user data from users table
-      const { error: deleteUserError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', user.id)
-
-      if (deleteUserError) throw deleteUserError
-
-      // Then sign out the user (this will handle auth cleanup)
-      const { error: signOutError } = await supabase.auth.signOut()
+      // Refresh the session to get a valid token
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
       
-      if (signOutError) {
-        console.warn("Sign out warning:", signOutError)
-        // Continue anyway, the user data is already deleted
+      if (refreshError || !refreshData?.session) {
+        // If refresh fails, try to get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.access_token) {
+          // Session is invalid, user needs to log in again
+          throw new Error("Your session has expired. Please log in again and try deleting your account.")
+        }
+        
+        // Use the current session token if refresh failed
+        return await deleteWithToken(session.access_token)
+      }
+
+      // Use the refreshed token
+      return await deleteWithToken(refreshData.session.access_token)
+    } catch (error: any) {
+      console.error("Delete Account Error:", error)
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: error?.message || "Could not delete your account. Please try again or contact support.",
+      })
+      setIsDeletingAccount(false)
+    }
+  }
+
+  const deleteWithToken = async (accessToken: string) => {
+    try {
+      // Use the Next.js API route instead of Edge Function
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.error || `Failed to delete account (${response.status})`)
       }
 
       toast({
         title: "Account Deleted",
         description: "Your account and all associated data have been permanently deleted.",
       })
+
+      // Sign out
+      await supabase.auth.signOut()
 
       // Redirect to login after a short delay
       setTimeout(() => {
