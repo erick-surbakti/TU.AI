@@ -79,6 +79,36 @@ export default function LoginPage() {
     
     try {
       if (mode === "register") {
+        // Validate birthday and age
+        if (!formData.birthday) {
+          toast({ variant: "destructive", title: "Birthday Required", description: "Please enter your birthday." })
+          setLoading(false)
+          return
+        }
+
+        const age = calculateAge(formData.birthday)
+        if (age < 15) {
+          toast({ 
+            variant: "destructive", 
+            title: "Age Requirement", 
+            description: "You must be at least 15 years old to register." 
+          })
+          setLoading(false)
+          return
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+          toast({ 
+            variant: "destructive", 
+            title: "Invalid Email", 
+            description: "Please enter a valid email address (e.g., name@domain.com)" 
+          })
+          setLoading(false)
+          return
+        }
+
         const uppercaseRegExp   = /(?=.*?[A-Z])/;
         const lowercaseRegExp   = /(?=.*?[a-z])/;
         const specialCharRegExp = /(?=.*?[#?!@$%^&*-])/;

@@ -12,12 +12,12 @@ import { createClient } from "@/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select"
 import { ASEAN_COUNTRIES } from "@/lib/localization"
 import {
@@ -34,12 +34,12 @@ export default function SettingsPage() {
   const supabase = createClient()
   const { toast } = useToast()
   const { isEasyMode, toggleEasyMode } = useEasyMode()
-
+  
   const [user, setUser] = React.useState<any>(null)
   const [profile, setProfile] = React.useState<any>(null)
   const [isAuthLoading, setIsAuthLoading] = React.useState(true)
   const [isProfileLoading, setIsProfileLoading] = React.useState(true)
-
+  
   // API Configuration
   const [apiKey, setApiKey] = React.useState("")
   const [countryCode, setCountryCode] = React.useState("MY")
@@ -97,10 +97,10 @@ export default function SettingsPage() {
 
   const handleVerify = async () => {
     if (!apiKey.trim()) return
-
+    
     setIsVerifying(true)
     setVerificationStatus('verifying')
-
+    
     try {
       const response = await fetch("https://api.groq.com/openai/v1/models", {
         headers: {
@@ -108,7 +108,7 @@ export default function SettingsPage() {
         }
       })
       const data = await response.json()
-
+      
       if (response.ok) {
         setVerificationStatus('valid')
         toast({
@@ -137,26 +137,24 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (!user) return
-
+    
     setIsSaving(true)
     try {
-      const payload = {
-        ...(profile || {}),
-        id: user.id,
-        email: user.email,
-        geminiApiKey: apiKey.trim(),
-        countryCode: countryCode,
-        preferences: {
-          emailNotifications,
-          diseaseAlerts,
-          newsDigest,
-          weeklyReport,
-        },
-        lastLogin: new Date().toISOString()
-      }
-
-      const { error } = await supabase.from('users').upsert(payload)
-
+      const { error } = await supabase
+        .from('users')
+        .update({
+          geminiApiKey: apiKey.trim(),
+          countryCode: countryCode,
+          preferences: {
+            emailNotifications,
+            diseaseAlerts,
+            newsDigest,
+            weeklyReport,
+          },
+          lastLogin: new Date().toISOString()
+        })
+        .eq('id', user.id)
+      
       if (error) throw error
 
       toast({
@@ -189,6 +187,14 @@ export default function SettingsPage() {
 
       if (userError) throw userError
 
+      // Fetch user's farms
+      const { data: farmsData, error: farmsError } = await supabase
+        .from('farms')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (farmsError && farmsError.code !== 'PGRST116') throw farmsError
+
       // Prepare export data
       const exportData = {
         exportedAt: new Date().toISOString(),
@@ -198,6 +204,7 @@ export default function SettingsPage() {
           createdAt: user.created_at,
         },
         profile: userData,
+        farms: farmsData || [],
       }
 
       // Create and download JSON file
@@ -233,26 +240,24 @@ export default function SettingsPage() {
 
     setIsDeletingAccount(true)
     try {
-      // Delete user data from users table
-      const { error: deleteError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', user.id)
+      // Refresh the session to get a valid token
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      
+      if (refreshError || !refreshData?.session) {
+        // If refresh fails, try to get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session?.access_token) {
+          // Session is invalid, user needs to log in again
+          throw new Error("Your session has expired. Please log in again and try deleting your account.")
+        }
+        
+        // Use the current session token if refresh failed
+        return await deleteWithToken(session.access_token)
+      }
 
-      if (deleteError) throw deleteError
-
-      // Delete auth user
-      const { error: authError } = await supabase.auth.admin.deleteUser(user.id)
-
-      if (authError) throw authError
-
-      toast({
-        title: "Account Deleted",
-        description: "Your account and all associated data have been permanently deleted.",
-      })
-
-      // Redirect to login
-      window.location.href = '/login'
+      // Use the refreshed token
+      return await deleteWithToken(refreshData.session.access_token)
     } catch (error: any) {
       console.error("Delete Account Error:", error)
       toast({
@@ -260,10 +265,50 @@ export default function SettingsPage() {
         title: "Deletion Failed",
         description: error?.message || "Could not delete your account. Please try again or contact support.",
       })
-    } finally {
       setIsDeletingAccount(false)
-      setShowDeleteConfirm(false)
-      setDeleteConfirmText("")
+    }
+  }
+
+  const deleteWithToken = async (accessToken: string) => {
+    try {
+      // Use the Next.js API route instead of Edge Function
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.error || `Failed to delete account (${response.status})`)
+      }
+
+      toast({
+        title: "Account Deleted",
+        description: "Your account and all associated data have been permanently deleted.",
+      })
+
+      // Sign out
+      await supabase.auth.signOut()
+
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 1500)
+    } catch (error: any) {
+      console.error("Delete Account Error:", error)
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: error?.message || "Could not delete your account. Please try again or contact support.",
+      })
+      setIsDeletingAccount(false)
     }
   }
 
@@ -271,20 +316,18 @@ export default function SettingsPage() {
     if (!user) return
 
     try {
-      const payload = {
-        ...(profile || {}),
-        id: user.id,
-        email: user.email,
-        preferences: {
-          emailNotifications,
-          diseaseAlerts,
-          newsDigest,
-          weeklyReport,
-        },
-      }
-
-      const { error } = await supabase.from('users').upsert(payload)
-
+      const { error } = await supabase
+        .from('users')
+        .update({
+          preferences: {
+            emailNotifications,
+            diseaseAlerts,
+            newsDigest,
+            weeklyReport,
+          },
+        })
+        .eq('id', user.id)
+      
       if (error) throw error
 
       toast({
@@ -327,15 +370,15 @@ export default function SettingsPage() {
         {/* API Configuration Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
-                <Key className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">API Configuration</CardTitle>
-                <CardDescription className="text-xs font-medium">Connect your Groq AI data provider.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
+                 <Key className="h-7 w-7 text-primary" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800">API Configuration</CardTitle>
+                 <CardDescription className="text-xs font-medium">Connect your Groq AI data provider.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
             <Alert variant="default" className="bg-emerald-50 border-emerald-100 rounded-[1.5rem] p-6 shadow-sm">
@@ -350,7 +393,7 @@ export default function SettingsPage() {
               <Label htmlFor="groqKey" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Groq API Key</Label>
               <div className="relative group">
                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
-                <Input
+                <Input 
                   id="groqKey"
                   type="password"
                   placeholder="Paste your key here (starts with gsk_...)"
@@ -391,8 +434,8 @@ export default function SettingsPage() {
 
             <div className="space-y-4 pt-4 border-t">
               <Label htmlFor="country" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Regional Context (ASEAN)</Label>
-              <Select
-                value={countryCode}
+              <Select 
+                value={countryCode} 
                 onValueChange={(v) => {
                   setCountryCode(v)
                 }}
@@ -415,32 +458,32 @@ export default function SettingsPage() {
             </div>
           </CardContent>
           <CardFooter className="bg-slate-50/50 p-8 border-t flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-              <ShieldCheck className="h-4 w-4 text-emerald-500" />
-              End-to-End Encryption Active
-            </div>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || !apiKey.trim()}
-              className="w-full md:w-auto h-14 rounded-2xl bg-primary text-white font-bold px-12 shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-            >
-              {isSaving ? <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Syncing...</> : <><Save className="h-5 w-5 mr-2" /> Save Changes</>}
-            </Button>
+             <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+               <ShieldCheck className="h-4 w-4 text-emerald-500" />
+               End-to-End Encryption Active
+             </div>
+              <Button 
+                onClick={handleSave} 
+                disabled={isSaving || !apiKey.trim()}
+                className="w-full md:w-auto h-14 rounded-2xl bg-primary text-white font-bold px-12 shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+              >
+                {isSaving ? <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Syncing...</> : <><Save className="h-5 w-5 mr-2" /> Save Changes</>}
+              </Button>
           </CardFooter>
         </Card>
 
         {/* Notification Settings Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
-                <Bell className="h-7 w-7 text-blue-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">Notifications</CardTitle>
-                <CardDescription className="text-xs font-medium">Control how and when you receive updates.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
+                 <Bell className="h-7 w-7 text-blue-500" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800">Notifications</CardTitle>
+                 <CardDescription className="text-xs font-medium">Control how and when you receive updates.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-4">
             <div className="space-y-4">
@@ -455,8 +498,8 @@ export default function SettingsPage() {
                     <div className="font-semibold text-sm text-slate-800">{label}</div>
                     <div className="text-xs text-muted-foreground">{desc}</div>
                   </div>
-                  <Switch
-                    checked={value}
+                  <Switch 
+                    checked={value} 
                     onCheckedChange={setter}
                     className="data-[state=checked]:bg-primary"
                   />
@@ -465,27 +508,27 @@ export default function SettingsPage() {
             </div>
           </CardContent>
           <CardFooter className="bg-slate-50/50 p-8 border-t flex justify-end gap-4">
-            <Button
-              onClick={saveNotificationSettings}
-              className="h-12 rounded-2xl bg-primary text-white font-bold px-8 shadow-lg shadow-primary/20 active:scale-95 transition-all"
-            >
-              <Save className="h-5 w-5 mr-2" /> Save Preferences
-            </Button>
+              <Button 
+                onClick={saveNotificationSettings}
+                className="h-12 rounded-2xl bg-primary text-white font-bold px-8 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              >
+                <Save className="h-5 w-5 mr-2" /> Save Preferences
+              </Button>
           </CardFooter>
         </Card>
 
         {/* Accessibility Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
-                <HandMetal className="h-7 w-7 text-emerald-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">Accessibility</CardTitle>
-                <CardDescription className="text-xs font-medium">Simplify the workspace for a more focused experience.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
+                 <HandMetal className="h-7 w-7 text-emerald-500" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800">Accessibility</CardTitle>
+                 <CardDescription className="text-xs font-medium">Simplify the workspace for a more focused experience.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8">
             <div className="flex items-center justify-between p-6 rounded-[2rem] bg-slate-50 border border-slate-100">
@@ -495,8 +538,8 @@ export default function SettingsPage() {
                   Enables larger text, bigger buttons, and simplified AI responses across the entire dashboard.
                 </div>
               </div>
-              <Switch
-                checked={isEasyMode}
+              <Switch 
+                checked={isEasyMode} 
                 onCheckedChange={toggleEasyMode}
                 className="scale-125 data-[state=checked]:bg-emerald-500"
               />
@@ -507,19 +550,19 @@ export default function SettingsPage() {
         {/* Security Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
-                <Shield className="h-7 w-7 text-amber-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">Security & Password</CardTitle>
-                <CardDescription className="text-xs font-medium">Manage your account security and authentication.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
+                 <Shield className="h-7 w-7 text-amber-500" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800">Security & Password</CardTitle>
+                 <CardDescription className="text-xs font-medium">Manage your account security and authentication.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8">
             <div className="space-y-3">
-              <Button
+              <Button 
                 asChild
                 className="w-full h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-6 shadow-sm active:scale-95 transition-all border border-slate-200"
               >
@@ -534,15 +577,15 @@ export default function SettingsPage() {
         {/* Data Management Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
-                <Download className="h-7 w-7 text-purple-500" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800">Data Management</CardTitle>
-                <CardDescription className="text-xs font-medium">Export your data or delete your account.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-slate-100">
+                 <Download className="h-7 w-7 text-purple-500" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800">Data Management</CardTitle>
+                 <CardDescription className="text-xs font-medium">Export your data or delete your account.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-4">
             <Alert variant="default" className="bg-blue-50 border-blue-100 rounded-[1.5rem] p-4">
@@ -553,7 +596,7 @@ export default function SettingsPage() {
               </AlertDescription>
             </Alert>
 
-            <Button
+            <Button 
               onClick={handleExportData}
               disabled={isExporting}
               className="w-full h-12 rounded-2xl bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-6 shadow-sm active:scale-95 transition-all border border-purple-200"
@@ -566,15 +609,15 @@ export default function SettingsPage() {
         {/* Danger Zone Card */}
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white border-destructive/20">
           <CardHeader className="bg-destructive/5 p-8 border-b border-destructive/20">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-destructive/20">
-                <Trash2 className="h-7 w-7 text-destructive" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-destructive">Danger Zone</CardTitle>
-                <CardDescription className="text-xs font-medium">Permanently delete your account and all data.</CardDescription>
-              </div>
-            </div>
+             <div className="flex items-center gap-4">
+               <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-destructive/20">
+                 <Trash2 className="h-7 w-7 text-destructive" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-destructive">Danger Zone</CardTitle>
+                 <CardDescription className="text-xs font-medium">Permanently delete your account and all data.</CardDescription>
+               </div>
+             </div>
           </CardHeader>
           <CardContent className="p-8">
             <Alert variant="destructive" className="rounded-[1.5rem] p-4 bg-destructive/10 border-destructive/30">
@@ -586,7 +629,7 @@ export default function SettingsPage() {
             </Alert>
           </CardContent>
           <CardFooter className="bg-destructive/5 p-8 border-t border-destructive/20">
-            <Button
+            <Button 
               onClick={() => setShowDeleteConfirm(true)}
               variant="destructive"
               className="w-full h-12 rounded-2xl font-bold px-6 shadow-lg shadow-destructive/20 active:scale-95 transition-all"
@@ -614,7 +657,7 @@ export default function SettingsPage() {
               </ul>
               <p className="font-semibold mt-4">This action cannot be reversed.</p>
               <p className="text-xs">Type <span className="font-bold bg-destructive/10 px-2 py-1 rounded">DELETE MY ACCOUNT</span> to confirm:</p>
-              <Input
+              <Input 
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder="Type confirmation text"
@@ -624,7 +667,7 @@ export default function SettingsPage() {
           </AlertDialogHeader>
           <div className="flex gap-3 mt-6">
             <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogAction 
               onClick={handleDeleteAccount}
               disabled={isDeletingAccount || deleteConfirmText !== "DELETE MY ACCOUNT"}
               className="rounded-lg bg-destructive hover:bg-destructive/90 text-white disabled:opacity-50"
