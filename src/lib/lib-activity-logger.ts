@@ -26,6 +26,10 @@ interface LogActivityParams {
     metadata?: Record<string, any>
 }
 
+function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 /**
  * Log an activity to the database
  * Call this after any significant user action
@@ -103,18 +107,23 @@ export async function logDiseaseScan(
 export async function logPathfinder(
     farmName: string,
     cropType: string,
-    strategy: string
+    reportId?: string | null
 ) {
+    const metadata: Record<string, any> = {
+        farm_name: farmName,
+        crop_type: cropType,
+    }
+
+    if (reportId && isUuid(reportId)) {
+        metadata.report_id = reportId
+    }
+
     return logActivity({
         activity_type: "pathfinder",
         title: `AI Pathfinder: ${farmName} Strategy Generated`,
         result: "Strategy Active",
         icon_type: "setup",
-        metadata: {
-            farm_name: farmName,
-            crop_type: cropType,
-            strategy
-        }
+        metadata
     })
 }
 
