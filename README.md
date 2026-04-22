@@ -1,4 +1,4 @@
-## TUAI
+# TUAI
 
 AI-native platform for workflow automation, knowledge operations, and intelligent execution.
 TUAI is designed with a modular, scalable, production-ready architecture.
