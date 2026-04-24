@@ -429,7 +429,7 @@ export default function TUAIUltraClean() {
                 },
                 {
                   name: "Professional",
-                  price: "₱299/mo",
+                  price: "$/mo",
                   features: [
                     "Everything in Starter",
                     "Market alerts",
