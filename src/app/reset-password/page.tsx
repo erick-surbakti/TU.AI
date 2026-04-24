@@ -15,6 +15,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
+  const [isRecoveryReady, setIsRecoveryReady] = React.useState(false)
   
   const router = useRouter()
   const supabase = createClient()
@@ -22,17 +23,22 @@ export default function ResetPasswordPage() {
 
   React.useEffect(() => {
     setMounted(true)
-    // Optional: Check if user is actually authenticated from the recovery link
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        toast({
-          variant: "destructive",
-          title: "Invalid Link",
-          description: "This password recovery link is expired or invalid."
-        })
-        router.push("/login")
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && !!session)) {
+        setIsRecoveryReady(true)
       }
     })
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setIsRecoveryReady(true)
+      }
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -43,6 +49,15 @@ export default function ResetPasswordPage() {
         variant: "destructive",
         title: "Passwords do not match",
         description: "Please make sure both passwords are the exactly the same.",
+      })
+      return
+    }
+
+    if (!isRecoveryReady) {
+      toast({
+        variant: "destructive",
+        title: "Recovery Session Not Ready",
+        description: "Please reopen the reset link from your email. It may be expired or invalid.",
       })
       return
     }
@@ -130,7 +145,7 @@ export default function ResetPasswordPage() {
                 </div>
               </div>
 
-              <Button disabled={loading || password.length < 6} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg group shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all mt-4 active:scale-95">
+              <Button disabled={loading || password.length < 6 || !isRecoveryReady} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg group shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all mt-4 active:scale-95">
                 {loading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
