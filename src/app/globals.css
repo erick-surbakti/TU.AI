@@ -3,67 +3,90 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 200 20% 96%;
-    --foreground: 201 71% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 201 71% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 201 71% 10%;
-    --primary: 201 71% 35%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 174 57% 59%;
-    --secondary-foreground: 201 71% 10%;
-    --muted: 200 20% 90%;
-    --muted-foreground: 201 30% 40%;
-    --accent: 174 57% 90%;
-    --accent-foreground: 201 71% 35%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 200 20% 85%;
-    --input: 200 20% 85%;
-    --ring: 201 71% 35%;
-    --radius: 1rem;
-    --sidebar-background: 201 71% 10%;
-    --sidebar-foreground: 200 20% 96%;
-    --sidebar-primary: 174 57% 59%;
-    --sidebar-primary-foreground: 201 71% 10%;
-    --sidebar-accent: 201 71% 15%;
-    --sidebar-accent-foreground: 200 20% 96%;
-    --sidebar-border: 201 71% 15%;
-    --sidebar-ring: 174 57% 59%;
-  }
+    :root {
+        /* MAIN BACKGROUND */
+        --background: 0 0% 100%;
+        --foreground: 222 47% 11%;
+
+        /* CARD */
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+
+        /* POPOVER */
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+
+        /* BRAND GREEN */
+        --primary: 142 71% 45%;
+        --primary-foreground: 0 0% 100%;
+
+        /* EMERALD */
+        --secondary: 160 84% 39%;
+        --secondary-foreground: 0 0% 100%;
+
+        /* SOFT BACKGROUND */
+        --muted: 210 20% 96%;
+        --muted-foreground: 215 16% 47%;
+
+        /* LIGHT GREEN SURFACE */
+        --accent: 138 76% 97%;
+        --accent-foreground: 142 71% 30%;
+
+        /* ERROR */
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 98%;
+
+        /* BORDER */
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --ring: 142 71% 45%;
+
+        --radius: 1rem;
+
+        /* SIDEBAR */
+        --sidebar-background: 142 71% 12%;
+        --sidebar-foreground: 0 0% 100%;
+        --sidebar-primary: 142 71% 45%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 142 40% 18%;
+        --sidebar-accent-foreground: 0 0% 100%;
+        --sidebar-border: 142 40% 20%;
+        --sidebar-ring: 142 71% 45%;
+    }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+    * {
+        @apply border-border;
+    }
 
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings:
+            "rlig" 1,
+            "calt" 1;
+        overflow-x: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
 
-  ::-webkit-scrollbar {
-    display: none;
-  }
+    ::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
 
+/* GLASS CARD */
 .glass-card {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
 }
