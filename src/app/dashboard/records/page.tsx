@@ -20,8 +20,18 @@ import {
   ShieldCheck,
   Building2,
   Sparkles,
-  Zap
+  Zap,
+  Trash,
+  Eye
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -91,6 +101,17 @@ export default function RecordsPage() {
       r.diseaseIdentified.toLowerCase().includes(ledgerSearch.toLowerCase())
     )
   }, [records, ledgerSearch])
+
+  const deleteRecord = async (id: string) => {
+    try {
+      const { error } = await supabase.from('crop_scan_results').delete().eq('id', id)
+      if (error) throw error
+      setRecords(prev => prev.filter(r => r.id !== id))
+      toast({ title: "Record Deleted", description: "The health record has been removed." })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete record." })
+    }
+  }
 
   const runAudit = async () => {
     if (!geminiKey) {
@@ -533,9 +554,24 @@ export default function RecordsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="pr-8 text-right">
-                            <Button variant="ghost" size="icon" className="rounded-xl">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-slate-100 data-[state=open]:bg-slate-100">
+                                  <MoreVertical className="h-4 w-4 text-slate-500" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-xl border-slate-100">
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Options</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem 
+                                  className="text-xs font-bold text-red-600 rounded-lg focus:bg-red-50 focus:text-red-700 cursor-pointer"
+                                  onClick={() => deleteRecord(record.id)}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" /> Delete Record
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}
