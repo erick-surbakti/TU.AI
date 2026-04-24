@@ -26,9 +26,12 @@ import { ASEAN_COUNTRIES } from "@/lib/localization"
 export default function LoginPage() {
   const [mounted, setMounted] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
-  const [mode, setMode] = React.useState<"login" | "register" | "forgot">("login")
+  const [mode, setMode] = React.useState<"login" | "register" | "forgot" | "verify-otp">("login")
   const [showPassword, setShowPassword] = React.useState(false)
   const [captchaToken, setCaptchaToken] = React.useState<string | null>(null)
+  const [otp, setOtp] = React.useState("")
+  const [verifyEmail, setVerifyEmail] = React.useState("")
+  const [resendCooldown, setResendCooldown] = React.useState(0)
 
   
   const [formData, setFormData] = React.useState({
@@ -49,6 +52,15 @@ export default function LoginPage() {
   React.useEffect(() => {
     setMounted(true)
   }, [])
+
+  React.useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [resendCooldown])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }))
@@ -168,8 +180,10 @@ export default function LoginPage() {
           return
         } else {
           // If Confirm Email is ON, tell them to check their email
-          toast({ title: "Registration Successful", description: "PLEASE CHECK YOUR EMAIL TO COMPLETE THE SIGN UP" })
-          setMode("login")
+          toast({ title: "Registration Successful", description: "Please check your email to complete the sign up!" })
+          setVerifyEmail(formData.email)
+          setResendCooldown(0)
+          setMode("verify-otp")
           return
         }
       } else if (mode === "forgot") {
@@ -210,6 +224,91 @@ export default function LoginPage() {
     }
   }
 
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    try {
+      if (!otp || otp.length !== 8) {
+        toast({ 
+          variant: "destructive", 
+          title: "Invalid OTP", 
+          description: "OTP must be 8 digits long." 
+        })
+        setLoading(false)
+        return
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: verifyEmail,
+        token: otp,
+        type: 'email'
+      })
+
+      if (error) throw error
+
+      if (data.session && data.user) {
+        toast({
+          title: "Email Verified!",
+          description: "Welcome to TUAI. Logging you in...",
+        })
+        
+        // Wait a bit for the session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        router.push("/dashboard")
+      }
+    } catch (error: any) {
+      let message = error.message || "OTP verification failed."
+      if (message.includes('invalid') || message.includes('expired')) {
+        message = "Invalid or expired OTP. Please check your email and try again."
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: message,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: verifyEmail,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "OTP Resent",
+        description: "Check your email for the new verification code.",
+      })
+
+      // Start 60-second cooldown
+      setResendCooldown(60)
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Resend Failed",
+        description: error.message || "Could not resend OTP.",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBackToAuth = () => {
+    setOtp("")
+    setVerifyEmail("")
+    setResendCooldown(0)
+    setMode("login")
+    setFormData(prev => ({...prev, password: ""}))
+  }
+
   const handleGoogleAuth = async () => {
     supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -237,16 +336,75 @@ export default function LoginPage() {
         <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] overflow-hidden bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-2 pt-10 pb-6 text-center">
             <CardTitle className="text-3xl font-headline font-bold text-slate-800">
-              {mode === "login" ? "Welcome Back" : "Join TUAI"}
+              {mode === "login" ? "Welcome Back" : mode === "verify-otp" ? "Verify Your Email" : "Join TUAI"}
             </CardTitle>
             <CardDescription className="text-slate-500 font-medium px-4">
               {mode === "login" && "Enter your credentials to access your farm intelligence dashboard."}
               {mode === "register" && "Create your farmer profile to start monitoring your crops with AI."}
               {mode === "forgot" && "Enter your email and we'll send you a password reset link."}
+              {mode === "verify-otp" && `We've sent an 8-digit code to ${verifyEmail}. Enter it below to verify your account.`}
             </CardDescription>
           </CardHeader>
           
           <CardContent className="pb-10 px-8">
+            {mode === "verify-otp" ? (
+              <form onSubmit={handleVerifyOTP} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="otp" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Verification Code</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                      id="otp"
+                      placeholder="00000000"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      maxLength={8}
+                      className="pl-12 h-16 rounded-xl bg-slate-50 border-2 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-inner text-center text-2xl font-bold tracking-widest"
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">Enter the 8-digit code from your email</p>
+                </div>
+
+                <Button 
+                  disabled={loading || otp.length !== 8} 
+                  className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg group shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95"
+                >
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      Verify Email
+                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slate-500">Didn't receive the code?</span>
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={loading || resendCooldown > 0}
+                    className={`font-bold transition-all ${
+                      resendCooldown > 0 
+                        ? "text-slate-400 cursor-not-allowed" 
+                        : "text-primary hover:underline"
+                    }`}
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBackToAuth}
+                  className="w-full text-slate-600 hover:text-slate-800 text-sm font-semibold transition-colors"
+                >
+                  Back to Login
+                </button>
+              </form>
+            ) : (
             <Tabs defaultValue="login" className="w-full" onValueChange={(v) => setMode(v as any)}>
               <TabsList className="grid w-full grid-cols-2 mb-8 h-14 rounded-2xl bg-slate-100 p-1.5">
                 <TabsTrigger value="login" className="rounded-xl font-bold text-[10px] sm:text-xs data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
@@ -421,6 +579,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             </Tabs>
+            )}
           </CardContent>
           <CardFooter className="bg-slate-50/50 py-8 flex flex-col items-center gap-4 border-t">
             <Link href="/" className="text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-2">

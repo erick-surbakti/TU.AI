@@ -1,4 +1,4 @@
-'use server';
+'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
@@ -6,7 +6,31 @@ import Image from 'next/image';
 import { Sprout, ShieldCheck, MapPin, Zap, ArrowRight, MessageCircle, ClipboardList, BarChart3, Globe, Sparkles, TrendingUp, Users, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default async function LandingPage() {
+export default function LandingPage() {
+  const [mousePos, setMousePos] = React.useState({ x: 0, y: 0 });
+  const [hoveredCard, setHoveredCard] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  const calculateTilt = (element: HTMLElement | null) => {
+    if (!element || !hoveredCard) return { rotateX: 0, rotateY: 0 };
+    
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const rotateY = ((mousePos.x - centerX) / (rect.width / 2)) * 5;
+    const rotateX = ((centerY - mousePos.y) / (rect.height / 2)) * 5;
+    
+    return { rotateX, rotateY };
+  };
   const heroImageUrl = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2000&auto=format&fit=crop";
 
   const aseanCountries = [
@@ -24,6 +48,45 @@ export default async function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white selection:bg-primary/20 scroll-smooth">
+      <style>{`
+        .tilt-card {
+          transition: transform 0.2s ease-out;
+          transform-style: preserve-3d;
+        }
+        
+        .tilt-card:hover {
+          will-change: transform;
+        }
+        
+        .cursor-glow {
+          position: fixed;
+          width: 400px;
+          height: 400px;
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: -1;
+          filter: blur(40px);
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          .tilt-card {
+            transform: none !important;
+          }
+        }
+      `}</style>
+      
+      {/* Cursor Glow Effect */}
+      <div 
+        className="cursor-glow fixed pointer-events-none z-0 opacity-30" 
+        style={{
+          left: `${mousePos.x - 200}px`,
+          top: `${mousePos.y - 200}px`,
+          transform: 'translate3d(0, 0, 0)',
+          transition: 'left 0.1s ease-out, top 0.1s ease-out',
+        }}
+      />
+      
       {/* Navigation */}
       <header className="px-6 lg:px-12 h-20 flex items-center justify-between sticky top-0 bg-white/70 backdrop-blur-xl z-50 border-b border-gray-100">
         <Link className="flex items-center justify-center gap-2 group" href="/">
@@ -113,23 +176,37 @@ export default async function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {aseanCountries.map((country, i) => (
-                <div
-                  key={i}
-                  className="p-6 rounded-[24px] bg-white border border-slate-100 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 transition-all group cursor-pointer"
-                >
-                  <div className="text-4xl mb-4">{country.flag}</div>
-                  <h4 className="text-lg font-bold text-slate-900 mb-2">{country.name}</h4>
-                  <div className="space-y-2">
-                    <div className="text-sm text-slate-600">
-                      <span className="font-semibold text-primary">{country.farmers}</span> farmers
-                    </div>
-                    <div className="text-xs text-slate-500 leading-relaxed">
-                      {country.crops}
+              {aseanCountries.map((country, i) => {
+                const cardId = `country-${i}`;
+                const tilt = hoveredCard === cardId ? calculateTilt(document.getElementById(cardId)) : { rotateX: 0, rotateY: 0 };
+                
+                return (
+                  <div
+                    key={i}
+                    id={cardId}
+                    className="p-6 rounded-[24px] bg-white border border-slate-100 hover:border-primary/20 transition-all group cursor-pointer tilt-card relative"
+                    onMouseEnter={() => setHoveredCard(cardId)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    style={{
+                      transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+                      boxShadow: hoveredCard === cardId 
+                        ? '0 20px 40px rgba(16, 185, 129, 0.2), 0 0 30px rgba(16, 185, 129, 0.1)' 
+                        : '0 4px 6px rgba(0, 0, 0, 0.07)'
+                    }}
+                  >
+                    <div className="text-4xl mb-4 inline-block group-hover:scale-125 transition-transform duration-300">{country.flag}</div>
+                    <h4 className="text-lg font-bold text-slate-900 mb-2">{country.name}</h4>
+                    <div className="space-y-2">
+                      <div className="text-sm text-slate-600">
+                        <span className="font-semibold text-primary">{country.farmers}</span> farmers
+                      </div>
+                      <div className="text-xs text-slate-500 leading-relaxed">
+                        {country.crops}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -155,20 +232,34 @@ export default async function LandingPage() {
                 { title: "Local Supplier Network", desc: "Find certified seed suppliers, fertilizer dealers, and equipment vendors in your province.", icon: MapPin, color: "bg-orange-500", link: "/dashboard/suppliers" },
                 { title: "Harvest Ledger", desc: "Track yields, costs, and profits. Export certifications for regional export buyers.", icon: ClipboardList, color: "bg-purple-500", link: "/dashboard/records" },
                 { title: "Market Pulse", desc: "Real-time ASEAN futures prices, buyer networks, and seasonal demand forecasts.", icon: TrendingUp, color: "bg-yellow-500", link: "/dashboard" }
-              ].map((f, i) => (
-                <div
-                  key={i}
-                  className="p-10 rounded-[32px] bg-white border border-slate-100 hover:border-primary/20 transition-all hover:shadow-2xl hover:shadow-primary/5 group cursor-pointer h-full"
-                >
-                  <Link href={f.link} className="block h-full">
-                    <div className={`h-12 w-12 ${f.color} rounded-xl flex items-center justify-center mb-8 shadow-lg shadow-black/10 group-hover:-rotate-6 transition-transform`}>
-                      <f.icon className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-4 text-slate-900">{f.title}</h3>
-                    <p className="text-slate-500 leading-relaxed font-medium">{f.desc}</p>
-                  </Link>
-                </div>
-              ))}
+              ].map((f, i) => {
+                const cardId = `feature-${i}`;
+                const tilt = hoveredCard === cardId ? calculateTilt(document.getElementById(cardId)) : { rotateX: 0, rotateY: 0 };
+                
+                return (
+                  <div
+                    key={i}
+                    id={cardId}
+                    className="p-10 rounded-[32px] bg-white border border-slate-100 hover:border-primary/20 transition-all group cursor-pointer h-full tilt-card relative"
+                    onMouseEnter={() => setHoveredCard(cardId)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    style={{
+                      transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+                      boxShadow: hoveredCard === cardId 
+                        ? '0 25px 50px rgba(16, 185, 129, 0.2), 0 0 40px rgba(16, 185, 129, 0.1)' 
+                        : '0 4px 15px rgba(0, 0, 0, 0.08)'
+                    }}
+                  >
+                    <Link href={f.link} className="block h-full">
+                      <div className={`h-12 w-12 ${f.color} rounded-xl flex items-center justify-center mb-8 shadow-lg shadow-black/10 group-hover:-rotate-6 transition-all duration-300 group-hover:scale-110`}>
+                        <f.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4 text-slate-900 group-hover:text-primary transition-colors">{f.title}</h3>
+                      <p className="text-slate-500 leading-relaxed font-medium group-hover:text-slate-600 transition-colors">{f.desc}</p>
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -183,26 +274,35 @@ export default async function LandingPage() {
               </p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="space-y-4 p-8 rounded-[24px] bg-slate-50 border border-slate-100">
-                <div className="text-5xl font-black text-primary">9.2M+</div>
-                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">ASEAN Farmers Reached</div>
-                <p className="text-xs text-slate-500">Across all 10 member nations</p>
-              </div>
-              <div className="space-y-4 p-8 rounded-[24px] bg-slate-50 border border-slate-100">
-                <div className="text-5xl font-black text-primary">28%</div>
-                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Avg Yield Increase</div>
-                <p className="text-xs text-slate-500">Verified across rice, palm, coconut</p>
-              </div>
-              <div className="space-y-4 p-8 rounded-[24px] bg-slate-50 border border-slate-100">
-                <div className="text-5xl font-black text-primary">6.4B</div>
-                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">USD Value Added</div>
-                <p className="text-xs text-slate-500">Regional farm revenue impact</p>
-              </div>
-              <div className="space-y-4 p-8 rounded-[24px] bg-slate-50 border border-slate-100">
-                <div className="text-5xl font-black text-primary">12</div>
-                <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">Languages Supported</div>
-                <p className="text-xs text-slate-500">Local & national dialects</p>
-              </div>
+              {[
+                { value: "9.2M+", label: "ASEAN Farmers Reached", desc: "Across all 10 member nations" },
+                { value: "28%", label: "Avg Yield Increase", desc: "Verified across rice, palm, coconut" },
+                { value: "6.4B", label: "USD Value Added", desc: "Regional farm revenue impact" },
+                { value: "12", label: "Languages Supported", desc: "Local & national dialects" }
+              ].map((stat, i) => {
+                const cardId = `stat-${i}`;
+                const tilt = hoveredCard === cardId ? calculateTilt(document.getElementById(cardId)) : { rotateX: 0, rotateY: 0 };
+                
+                return (
+                  <div 
+                    key={i}
+                    id={cardId}
+                    className="space-y-4 p-8 rounded-[24px] bg-slate-50 border border-slate-100 tilt-card relative cursor-pointer transition-all"
+                    onMouseEnter={() => setHoveredCard(cardId)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    style={{
+                      transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+                      boxShadow: hoveredCard === cardId 
+                        ? '0 20px 40px rgba(16, 185, 129, 0.15), 0 0 30px rgba(16, 185, 129, 0.1)' 
+                        : '0 4px 6px rgba(0, 0, 0, 0.07)'
+                    }}
+                  >
+                    <div className="text-5xl font-black text-primary group-hover:scale-110 transition-transform">{stat.value}</div>
+                    <div className="font-bold text-slate-600 uppercase tracking-widest text-sm">{stat.label}</div>
+                    <p className="text-xs text-slate-500">{stat.desc}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
