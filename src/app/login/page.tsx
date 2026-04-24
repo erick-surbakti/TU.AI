@@ -90,6 +90,8 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
+      const origin = window.location.origin
+
       if (mode === "register") {
         // Validate birthday and age
         if (!formData.birthday) {
@@ -142,6 +144,7 @@ export default function LoginPage() {
           password: formData.password,
           options: {
             captchaToken: captchaToken || undefined,
+            emailRedirectTo: `${origin}/auth/callback`,
             data: {
               display_name: formData.fullName,
             }
@@ -188,7 +191,7 @@ export default function LoginPage() {
         }
       } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-          redirectTo: `${window.location.origin}/reset-password`
+          redirectTo: `${origin}/reset-password`
         })
         if (error) throw error
         toast({ title: "Reset Link Sent", description: "Check your email for the recovery link." })
@@ -210,9 +213,17 @@ export default function LoginPage() {
       
       router.push("/dashboard")
     } catch (error: any) {
-      let message = error.message || "An error occurred during authentication."
+      console.error("Auth flow error", { mode, error })
+
+      let message = error?.message || "An error occurred during authentication."
       if (message.includes('already registered')) message = "This email is already registered."
       if (message.includes('Invalid login credentials')) message = "Incorrect email or password."
+      if (mode === "register" && message.includes('Error sending confirmation email')) {
+        message = "Unable to send confirmation email. Check Supabase Auth email provider/SMTP settings and allowed redirect URLs."
+      }
+      if (mode === "forgot" && message.includes('Error sending recovery email')) {
+        message = "Unable to send reset email. Check Supabase Auth email provider/SMTP settings and allowed redirect URLs."
+      }
       
       toast({
         variant: "destructive",
