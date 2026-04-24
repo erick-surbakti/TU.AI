@@ -1,70 +1,90 @@
+"use client";
 
-"use client"
-
-import * as React from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Sprout, Mail, ArrowRight, Loader2, KeyRound, UserPlus, LogIn, User, Phone, Calendar, Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClient } from "@/supabase/client"
-import { useToast } from "@/hooks/use-toast"
-import { Turnstile } from "@marsidev/react-turnstile"
-import { Globe } from "lucide-react"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select"
-import { ASEAN_COUNTRIES } from "@/lib/localization"
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Leaf,
+  Mail,
+  ArrowRight,
+  Loader2,
+  KeyRound,
+  UserPlus,
+  LogIn,
+  User,
+  Phone,
+  Calendar,
+  Eye,
+  EyeOff,
+  Globe,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createClient } from "@/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Turnstile } from "@marsidev/react-turnstile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ASEAN_COUNTRIES } from "@/lib/localization";
 
 export default function LoginPage() {
-  const [mounted, setMounted] = React.useState(false)
-  const [loading, setLoading] = React.useState(false)
-  const [mode, setMode] = React.useState<"login" | "register" | "forgot" | "verify-otp">("login")
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null)
-  const [otp, setOtp] = React.useState("")
-  const [verifyEmail, setVerifyEmail] = React.useState("")
-  const [resendCooldown, setResendCooldown] = React.useState(0)
+  const [mounted, setMounted] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [mode, setMode] = React.useState<
+    "login" | "register" | "forgot" | "verify-otp"
+  >("login");
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
+  const [otp, setOtp] = React.useState("");
+  const [verifyEmail, setVerifyEmail] = React.useState("");
+  const [resendCooldown, setResendCooldown] = React.useState(0);
 
-  
   const [formData, setFormData] = React.useState({
     email: "",
     password: "",
     fullName: "",
     phone: "",
     birthday: "",
-    countryCode: "MY"
-  })
-  
-  const router = useRouter()
-  const supabase = createClient()
-  const { toast } = useToast()
-  
-  const turnstileKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    countryCode: "MY",
+  });
+
+  const router = useRouter();
+  const supabase = createClient();
+  const { toast } = useToast();
+
+  const turnstileKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   React.useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => {
-        setResendCooldown(resendCooldown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
+        setResendCooldown(resendCooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [resendCooldown])
+  }, [resendCooldown]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }))
-  }
+    setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
+  };
 
   const calculateAge = (birthday: string) => {
     const birthDate = new Date(birthday);
@@ -72,10 +92,10 @@ export default function LoginPage() {
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
+      age--;
     }
     return age;
-  }
+  };
 
   const getAgeGroup = (age: number) => {
     if (age < 36) return "Young Farmer";
@@ -83,75 +103,89 @@ export default function LoginPage() {
     if (age < 60) return "Senior Active";
     if (age < 70) return "Easy Mode";
     return "Assisted Mode";
-  }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    
+    e.preventDefault();
+    setLoading(true);
+
     try {
       if (mode === "register") {
         // Validate birthday and age
         if (!formData.birthday) {
-          toast({ variant: "destructive", title: "Birthday Required", description: "Please enter your birthday." })
-          setLoading(false)
-          return
+          toast({
+            variant: "destructive",
+            title: "Birthday Required",
+            description: "Please enter your birthday.",
+          });
+          setLoading(false);
+          return;
         }
 
-        const age = calculateAge(formData.birthday)
+        const age = calculateAge(formData.birthday);
         if (age < 15) {
-          toast({ 
-            variant: "destructive", 
-            title: "Age Requirement", 
-            description: "You must be at least 15 years old to register." 
-          })
-          setLoading(false)
-          return
+          toast({
+            variant: "destructive",
+            title: "Age Requirement",
+            description: "You must be at least 15 years old to register.",
+          });
+          setLoading(false);
+          return;
         }
 
         // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-          toast({ 
-            variant: "destructive", 
-            title: "Invalid Email", 
-            description: "Please enter a valid email address (e.g., name@domain.com)" 
-          })
-          setLoading(false)
-          return
+          toast({
+            variant: "destructive",
+            title: "Invalid Email",
+            description:
+              "Please enter a valid email address (e.g., name@domain.com)",
+          });
+          setLoading(false);
+          return;
         }
 
-        const uppercaseRegExp   = /(?=.*?[A-Z])/;
-        const lowercaseRegExp   = /(?=.*?[a-z])/;
+        const uppercaseRegExp = /(?=.*?[A-Z])/;
+        const lowercaseRegExp = /(?=.*?[a-z])/;
         const specialCharRegExp = /(?=.*?[#?!@$%^&*-])/;
-        
+
         let passErr = "";
-        if (formData.password.length < 8) passErr = "Password must be at least 8 characters.";
-        else if (!uppercaseRegExp.test(formData.password)) passErr = "Password must contain an uppercase letter.";
-        else if (!lowercaseRegExp.test(formData.password)) passErr = "Password must contain a lowercase letter.";
-        else if (!specialCharRegExp.test(formData.password)) passErr = "Password must contain a special character (#?!@$%^&*-).";
-        
+        if (formData.password.length < 8)
+          passErr = "Password must be at least 8 characters.";
+        else if (!uppercaseRegExp.test(formData.password))
+          passErr = "Password must contain an uppercase letter.";
+        else if (!lowercaseRegExp.test(formData.password))
+          passErr = "Password must contain a lowercase letter.";
+        else if (!specialCharRegExp.test(formData.password))
+          passErr = "Password must contain a special character (#?!@$%^&*-).";
+
         if (passErr) {
-          toast({ variant: "destructive", title: "Weak Password", description: passErr })
-          setLoading(false)
-          return
+          toast({
+            variant: "destructive",
+            title: "Weak Password",
+            description: passErr,
+          });
+          setLoading(false);
+          return;
         }
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            captchaToken: captchaToken || undefined,
-            data: {
-              display_name: formData.fullName,
-            }
-          }
-        });
+        const { data: authData, error: authError } = await supabase.auth.signUp(
+          {
+            email: formData.email,
+            password: formData.password,
+            options: {
+              captchaToken: captchaToken || undefined,
+              data: {
+                display_name: formData.fullName,
+              },
+            },
+          },
+        );
 
         if (authError) throw authError;
 
         if (authData.session && authData.user) {
-          // If Confirm Email is OFF in Supabase, they normally log in immediately. We force them out!
           const ageNum = calculateAge(formData.birthday);
           const ageGroup = getAgeGroup(ageNum);
           const easyModeEnabled = ageNum >= 60;
@@ -166,212 +200,296 @@ export default function LoginPage() {
             age_group: ageGroup,
             easy_mode_enabled: easyModeEnabled,
             countryCode: formData.countryCode,
-            language: "en-US"
+            language: "en-US",
           };
 
-          const { error: dbError } = await supabase.from('users').insert(userProfile);
+          const { error: dbError } = await supabase
+            .from("users")
+            .insert(userProfile);
           if (dbError) throw dbError;
-          
-          await supabase.auth.signOut(); // Force logout to deliberately drag them to login screen
-          
-          toast({ title: "Account Created!", description: "Registration complete. Please log in." })
-          setMode("login")
-          setFormData(prev => ({...prev, password: ""}))
-          return
+
+          await supabase.auth.signOut();
+
+          toast({
+            title: "Account Created!",
+            description: "Registration complete. Please log in.",
+          });
+          setMode("login");
+          setFormData((prev) => ({ ...prev, password: "" }));
+          return;
         } else {
-          // If Confirm Email is ON, tell them to check their email
-          toast({ title: "Registration Successful", description: "Please check your email to complete the sign up!" })
-          setVerifyEmail(formData.email)
-          setResendCooldown(0)
-          setMode("verify-otp")
-          return
+          toast({
+            title: "Registration Successful",
+            description: "Please check your email to complete the sign up!",
+          });
+          setVerifyEmail(formData.email);
+          setResendCooldown(0);
+          setMode("verify-otp");
+          return;
         }
       } else if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-          redirectTo: `${window.location.origin}/reset-password`
-        })
-        if (error) throw error
-        toast({ title: "Reset Link Sent", description: "Check your email for the recovery link." })
-        setMode("login")
-        return
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          formData.email,
+          {
+            redirectTo: `${window.location.origin}/reset-password`,
+          },
+        );
+        if (error) throw error;
+        toast({
+          title: "Reset Link Sent",
+          description: "Check your email for the recovery link.",
+        });
+        setMode("login");
+        return;
       } else {
         const { error: authError } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
-        
+
         if (authError) throw authError;
 
         toast({
           title: "Welcome Back!",
           description: "Syncing your farm records...",
-        })
+        });
       }
-      
-      router.push("/dashboard")
+
+      router.push("/dashboard");
     } catch (error: any) {
-      let message = error.message || "An error occurred during authentication."
-      if (message.includes('already registered')) message = "This email is already registered."
-      if (message.includes('Invalid login credentials')) message = "Incorrect email or password."
-      
+      let message = error.message || "An error occurred during authentication.";
+      if (message.includes("already registered"))
+        message = "This email is already registered.";
+      if (message.includes("Invalid login credentials"))
+        message = "Incorrect email or password.";
+
       toast({
         variant: "destructive",
         title: "Authentication Failed",
         description: message,
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    
+    e.preventDefault();
+    setLoading(true);
+
     try {
       if (!otp || otp.length !== 8) {
-        toast({ 
-          variant: "destructive", 
-          title: "Invalid OTP", 
-          description: "OTP must be 8 digits long." 
-        })
-        setLoading(false)
-        return
+        toast({
+          variant: "destructive",
+          title: "Invalid OTP",
+          description: "OTP must be 8 digits long.",
+        });
+        setLoading(false);
+        return;
       }
 
       const { data, error } = await supabase.auth.verifyOtp({
         email: verifyEmail,
         token: otp,
-        type: 'email'
-      })
+        type: "email",
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       if (data.session && data.user) {
         toast({
           title: "Email Verified!",
           description: "Welcome to TUAI. Logging you in...",
-        })
-        
-        // Wait a bit for the session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        router.push("/dashboard")
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        router.push("/dashboard");
       }
     } catch (error: any) {
-      let message = error.message || "OTP verification failed."
-      if (message.includes('invalid') || message.includes('expired')) {
-        message = "Invalid or expired OTP. Please check your email and try again."
+      let message = error.message || "OTP verification failed.";
+      if (message.includes("invalid") || message.includes("expired")) {
+        message =
+          "Invalid or expired OTP. Please check your email and try again.";
       }
-      
+
       toast({
         variant: "destructive",
         title: "Verification Failed",
         description: message,
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleResendOTP = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const { error } = await supabase.auth.resend({
-        type: 'signup',
+        type: "signup",
         email: verifyEmail,
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       toast({
         title: "OTP Resent",
         description: "Check your email for the new verification code.",
-      })
+      });
 
-      // Start 60-second cooldown
-      setResendCooldown(60)
+      setResendCooldown(60);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Resend Failed",
         description: error.message || "Could not resend OTP.",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleBackToAuth = () => {
-    setOtp("")
-    setVerifyEmail("")
-    setResendCooldown(0)
-    setMode("login")
-    setFormData(prev => ({...prev, password: ""}))
-  }
+    setOtp("");
+    setVerifyEmail("");
+    setResendCooldown(0);
+    setMode("login");
+    setFormData((prev) => ({ ...prev, password: "" }));
+  };
 
   const handleGoogleAuth = async () => {
     supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
-    })
-  }
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
 
-  if (!mounted) return null
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 selection:bg-primary/20 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-10 gap-4">
-          <div className="h-16 w-16 bg-primary rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-primary/30 animate-in zoom-in duration-700">
-            <Sprout className="h-9 w-9 text-white" />
-          </div>
-          <div className="text-center space-y-1">
-            <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">TUAI</h1>
-            <p className="text-muted-foreground font-medium text-sm uppercase tracking-[0.2em]">Intelligent Agriculture</p>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white text-gray-900 overflow-x-hidden relative">
+      {/* Background sevibes landing page */}
+      <div className="absolute inset-0 pointer-events-none">
+        <svg
+          className="absolute inset-0 w-full h-full opacity-5"
+          preserveAspectRatio="xMidYMid slice"
+        >
+          <defs>
+            <filter id="noise-login">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.9"
+                numOctaves="4"
+                result="noise"
+                seed="2"
+              />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="80" />
+            </filter>
+          </defs>
+          <rect
+            width="100%"
+            height="100%"
+            fill="#16a34a"
+            opacity="0.1"
+            filter="url(#noise-login)"
+          />
+        </svg>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-green-500/5 to-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-green-600/5 to-teal-600/5 rounded-full blur-3xl" />
+      </div>
 
-        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] overflow-hidden bg-white/80 backdrop-blur-sm">
-          <CardHeader className="space-y-2 pt-10 pb-6 text-center">
-            <CardTitle className="text-3xl font-headline font-bold text-slate-800">
-              {mode === "login" ? "Welcome Back" : mode === "verify-otp" ? "Verify Your Email" : "Join TUAI"}
-            </CardTitle>
-            <CardDescription className="text-slate-500 font-medium px-4">
-              {mode === "login" && "Enter your credentials to access your farm intelligence dashboard."}
-              {mode === "register" && "Create your farmer profile to start monitoring your crops with AI."}
-              {mode === "forgot" && "Enter your email and we'll send you a password reset link."}
-              {mode === "verify-otp" && `We've sent an 8-digit code to ${verifyEmail}. Enter it below to verify your account.`}
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="pb-10 px-8">
-            {mode === "verify-otp" ? (
+      {/* Header link */}
+      <div className="absolute top-6 left-6 z-50">
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition"
+        >
+          <div className="w-5 h-5 bg-gradient-to-br from-green-600 to-emerald-600 rounded-md flex items-center justify-center">
+            <Leaf className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-lg font-bold tracking-tight text-gray-900 hidden sm:inline">
+            tuai
+          </span>
+        </Link>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Heading sevibes landing - jika bukan OTP mode */}
+        {mode !== "verify-otp" && (
+          <div className="flex flex-col items-center mb-8 gap-3">
+            <h1 className="text-5xl sm:text-6xl font-light tracking-tight text-gray-900 text-center">
+              {mode === "login"
+                ? "Welcome back."
+                : mode === "register"
+                  ? "Get started."
+                  : "Reset password."}
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600 font-light text-center">
+              {mode === "login" && "Access your farm intelligence dashboard."}
+              {mode === "register" &&
+                "Join thousands of ASEAN farmers using AI."}
+              {mode === "forgot" &&
+                "We'll send you a link to reset your password."}
+            </p>
+          </div>
+        )}
+
+        {/* Card */}
+        <div
+          className={`${mode === "verify-otp" ? "bg-white/60" : "bg-white/60"} backdrop-blur-sm border border-gray-200/50 rounded-2xl p-8 sm:p-10 shadow-lg shadow-gray-200/20`}
+        >
+          {mode === "verify-otp" ? (
+            <>
+              {/* OTP Heading */}
+              <div className="mb-8 text-center">
+                <h2 className="text-4xl sm:text-5xl font-light tracking-tight text-gray-900 mb-2">
+                  Verify your email.
+                </h2>
+                <p className="text-base sm:text-lg text-gray-600 font-light">
+                  We've sent an 8-digit code to{" "}
+                  <span className="font-semibold text-gray-900">
+                    {verifyEmail}
+                  </span>
+                </p>
+              </div>
+
               <form onSubmit={handleVerifyOTP} className="space-y-6">
+                {/* OTP Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="otp" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Verification Code</Label>
+                  <Label
+                    htmlFor="otp"
+                    className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                  >
+                    Verification Code
+                  </Label>
                   <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
                       id="otp"
                       placeholder="00000000"
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      onChange={(e) =>
+                        setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+                      }
                       maxLength={8}
-                      className="pl-12 h-16 rounded-xl bg-slate-50 border-2 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-inner text-center text-2xl font-bold tracking-widest"
+                      className="pl-11 h-14 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all text-center text-2xl font-bold tracking-widest"
                       required
                     />
                   </div>
-                  <p className="text-xs text-slate-500 mt-2">Enter the 8-digit code from your email</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Enter the 8-digit code from your email
+                  </p>
                 </div>
 
-                <Button 
-                  disabled={loading || otp.length !== 8} 
-                  className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg group shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95"
+                {/* Verify Button */}
+                <Button
+                  disabled={loading || otp.length !== 8}
+                  className="w-full h-11 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold text-base group shadow-lg shadow-green-600/20 hover:shadow-green-600/30 transition-all active:scale-95"
                 >
                   {loading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
                       Verify Email
@@ -380,214 +498,325 @@ export default function LoginPage() {
                   )}
                 </Button>
 
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500">Didn't receive the code?</span>
+                {/* Resend OTP */}
+                <div className="flex items-center gap-2 text-sm justify-center">
+                  <span className="text-gray-600">
+                    Didn't receive the code?
+                  </span>
                   <button
                     type="button"
                     onClick={handleResendOTP}
                     disabled={loading || resendCooldown > 0}
-                    className={`font-bold transition-all ${
-                      resendCooldown > 0 
-                        ? "text-slate-400 cursor-not-allowed" 
-                        : "text-primary hover:underline"
+                    className={`font-semibold transition-all ${
+                      resendCooldown > 0
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-green-600 hover:text-green-700"
                     }`}
                   >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                    {resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : "Resend OTP"}
                   </button>
                 </div>
 
+                {/* Back Button */}
                 <button
                   type="button"
                   onClick={handleBackToAuth}
-                  className="w-full text-slate-600 hover:text-slate-800 text-sm font-semibold transition-colors"
+                  className="w-full text-gray-600 hover:text-gray-900 text-sm font-semibold transition-colors py-2"
                 >
                   Back to Login
                 </button>
               </form>
-            ) : (
-            <Tabs defaultValue="login" className="w-full" onValueChange={(v) => setMode(v as any)}>
-              <TabsList className="grid w-full grid-cols-2 mb-8 h-14 rounded-2xl bg-slate-100 p-1.5">
-                <TabsTrigger value="login" className="rounded-xl font-bold text-[10px] sm:text-xs data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-                  <LogIn className="w-3.5 h-3.5 mr-1.5" /> Login
-                </TabsTrigger>
-                <TabsTrigger value="register" className="rounded-xl font-bold text-[10px] sm:text-xs data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-                  <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Register
-                </TabsTrigger>
-              </TabsList>
 
-              <div className="space-y-4 mb-8">
-                <Button 
-                   type="button" 
-                   variant="outline" 
-                   onClick={handleGoogleAuth}
-                   className="w-full h-13 rounded-2xl border-slate-200 shadow-sm font-bold text-slate-700 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-3"
+              {/* Footer */}
+              <div className="mt-8 pt-8 border-t border-gray-200 flex justify-center">
+                <Link
+                  href="/"
+                  className="text-xs font-semibold text-gray-600 hover:text-green-600 transition-colors flex items-center gap-2"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  Continue with Google
-                </Button>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 h-px bg-slate-200"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">or</span>
-                  <div className="flex-1 h-px bg-slate-200"></div>
-                </div>
+                  <Leaf className="h-4 w-4" /> Return to Website
+                </Link>
               </div>
+            </>
+          ) : (
+            <>
+              <Tabs
+                defaultValue="login"
+                className="w-full"
+                onValueChange={(v) => setMode(v as any)}
+              >
+                {/* Tab Buttons */}
+                <TabsList className="grid w-full grid-cols-2 mb-8 h-12 rounded-xl bg-gray-100 p-1 gap-2">
+                  <TabsTrigger
+                    value="login"
+                    className="rounded-lg font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md transition-all"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" /> Login
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="register"
+                    className="rounded-lg font-semibold text-sm data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-md transition-all"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" /> Register
+                  </TabsTrigger>
+                </TabsList>
 
-              <form onSubmit={handleAuth} className="space-y-5">
-                {mode === "register" && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Full Name</Label>
-                      <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <Input
-                          id="fullName"
-                          placeholder="Ahmad Bin Abdullah"
-                          value={formData.fullName}
-                          onChange={handleInputChange}
-                          className="pl-12 h-13 rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-inner"
-                          required={mode === "register"}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="country" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Home Country (ASEAN)</Label>
-                      <Select 
-                        value={formData.countryCode} 
-                        onValueChange={(v) => setFormData(prev => ({...prev, countryCode: v}))}
-                      >
-                        <SelectTrigger className="h-13 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-primary/20 transition-all shadow-inner pl-12 relative text-left">
-                          <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <SelectValue placeholder="Select your country" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl shadow-2xl border-slate-100">
-                          {Object.values(ASEAN_COUNTRIES).map((c) => (
-                            <SelectItem key={c.code} value={c.code} className="rounded-xl font-medium focus:bg-primary/5 focus:text-primary py-3">
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="birthday" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Birthday</Label>
-                        <div className="relative">
-                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <Input
-                            id="birthday"
-                            type="date"
-                            value={formData.birthday}
-                            onChange={handleInputChange}
-                            className="pl-12 pr-4 h-13 rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-inner"
-                            required={mode === "register"}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Phone</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <Input
-                            id="phone"
-                            type="tel"
-                            placeholder="+60..."
-                            value={formData.phone}
-                            onChange={handleInputChange}
-                            className="pl-12 h-13 rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-inner"
-                            required={mode === "register"}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-slate-500 ml-1">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <Input
-                      id="email"
-                      placeholder="farmer@tuai.my"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="pl-12 h-13 rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-inner"
-                      type="email"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {(mode === "login" || mode === "register") && (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center ml-1">
-                    <Label htmlFor="password" suppressHydrationWarning className="text-xs font-bold uppercase tracking-wider text-slate-500">Password</Label>
-                    {mode === "login" && (
-                      <button type="button" onClick={() => setMode("forgot")} suppressHydrationWarning className="text-[10px] font-bold text-primary hover:underline">Forgot?</button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="pl-12 pr-12 h-13 rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all shadow-inner"
-                      required={mode === "login" || mode === "register"}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                {/* Google Auth */}
+                <div className="space-y-4 mb-8">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGoogleAuth}
+                    className="w-full h-11 rounded-lg border border-gray-300 shadow-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-all flex items-center justify-center gap-3"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
+                      <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                    Continue with Google
+                  </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                      or
+                    </span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
                   </div>
                 </div>
-                )}
 
+                {/* Auth Form */}
+                <form onSubmit={handleAuth} className="space-y-5">
+                  {mode === "register" && (
+                    <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="fullName"
+                          className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                        >
+                          Full Name
+                        </Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <Input
+                            id="fullName"
+                            placeholder="Ahmad Bin Abdullah"
+                            value={formData.fullName}
+                            onChange={handleInputChange}
+                            className="pl-11 h-11 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all"
+                            required={mode === "register"}
+                          />
+                        </div>
+                      </div>
 
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="country"
+                          className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                        >
+                          Home Country (ASEAN)
+                        </Label>
+                        <Select
+                          value={formData.countryCode}
+                          onValueChange={(v) =>
+                            setFormData((prev) => ({ ...prev, countryCode: v }))
+                          }
+                        >
+                          <SelectTrigger className="h-11 rounded-lg bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-green-500/30 transition-all pl-11 relative text-left">
+                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                            <SelectValue placeholder="Select your country" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl shadow-xl border-gray-100">
+                            {Object.values(ASEAN_COUNTRIES).map((c) => (
+                              <SelectItem
+                                key={c.code}
+                                value={c.code}
+                                className="rounded-lg font-medium focus:bg-green-500/5 focus:text-green-700 py-2"
+                              >
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                {mode === "register" && turnstileKey && (
-                  <div className="flex justify-center pt-2 animate-in fade-in zoom-in duration-500">
-                    <Turnstile 
-                      siteKey={turnstileKey} 
-                      onSuccess={(token) => setCaptchaToken(token)} 
-                      onError={(err) => toast({ variant: "destructive", title: "Human Verification Failed", description: `Cloudflare Error: ${err}` })}
-                    />
-                  </div>
-                )}
-
-                <Button disabled={loading} className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-lg group shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all mt-4 active:scale-95">
-                  {loading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      {mode === "login" && "Enter Dashboard"}
-                      {mode === "register" && "Create Account"}
-                      {mode === "forgot" && "Send Reset Link"}
-                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="birthday"
+                            className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                          >
+                            Birthday
+                          </Label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <Input
+                              id="birthday"
+                              type="date"
+                              value={formData.birthday}
+                              onChange={handleInputChange}
+                              className="pl-11 pr-3 h-11 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all"
+                              required={mode === "register"}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="phone"
+                            className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                          >
+                            Phone
+                          </Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <Input
+                              id="phone"
+                              type="tel"
+                              placeholder="+60..."
+                              value={formData.phone}
+                              onChange={handleInputChange}
+                              className="pl-11 h-11 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all"
+                              required={mode === "register"}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </form>
-            </Tabs>
-            )}
-          </CardContent>
-          <CardFooter className="bg-slate-50/50 py-8 flex flex-col items-center gap-4 border-t">
-            <Link href="/" className="text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-2">
-              <Sprout className="h-4 w-4" /> Return to Website
-            </Link>
-          </CardFooter>
-        </Card>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="email"
+                      className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                    >
+                      Email Address
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        id="email"
+                        placeholder="farmer@tuai.my"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="pl-11 h-11 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all"
+                        type="email"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {(mode === "login" || mode === "register") && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label
+                          htmlFor="password"
+                          className="text-xs font-semibold uppercase tracking-wider text-gray-600"
+                        >
+                          Password
+                        </Label>
+                        {mode === "login" && (
+                          <button
+                            type="button"
+                            onClick={() => setMode("forgot")}
+                            className="text-xs font-semibold text-green-600 hover:text-green-700 transition"
+                          >
+                            Forgot?
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className="pl-11 pr-11 h-11 rounded-lg bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:border-green-400 transition-all"
+                          required={mode === "login" || mode === "register"}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {mode === "register" && turnstileKey && (
+                    <div className="flex justify-center pt-2 animate-in fade-in zoom-in duration-500">
+                      <Turnstile
+                        siteKey={turnstileKey}
+                        onSuccess={(token) => setCaptchaToken(token)}
+                        onError={(err) =>
+                          toast({
+                            variant: "destructive",
+                            title: "Human Verification Failed",
+                            description: `Cloudflare Error: ${err}`,
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <Button
+                    disabled={loading}
+                    className="w-full h-11 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold text-base group shadow-lg shadow-green-600/20 hover:shadow-green-600/30 transition-all mt-6 active:scale-95"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        {mode === "login" && "Enter Dashboard"}
+                        {mode === "register" && "Create Account"}
+                        {mode === "forgot" && "Send Reset Link"}
+                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Tabs>
+
+              {/* Footer */}
+              <div className="mt-8 pt-8 border-t border-gray-200 flex justify-center">
+                <Link
+                  href="/"
+                  className="text-xs font-semibold text-gray-600 hover:text-green-600 transition-colors flex items-center gap-2"
+                >
+                  <Leaf className="h-4 w-4" /> Return to Website
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
-  )
+  );
 }
