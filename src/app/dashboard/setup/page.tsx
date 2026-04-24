@@ -273,7 +273,7 @@ export default function FarmSetupPage() {
       toast({
         variant: "destructive",
         title: "Missing API Key",
-        description: "Please add your Gemini API Key in Settings first."
+        description: "Please add your Groq API Key in Settings first."
       })
       setLoading(false)
       return
