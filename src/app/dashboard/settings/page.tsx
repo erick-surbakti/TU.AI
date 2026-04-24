@@ -140,22 +140,31 @@ export default function SettingsPage() {
     
     setIsSaving(true)
     try {
+      // Build the payload — only include API key if user entered something
+      const updatePayload: Record<string, any> = {
+        countryCode: countryCode,
+        preferences: {
+          emailNotifications,
+          diseaseAlerts,
+          newsDigest,
+          weeklyReport,
+        },
+        lastLogin: new Date().toISOString()
+      }
+
+      if (apiKey.trim()) {
+        updatePayload.geminiApiKey = apiKey.trim()
+      }
+
       const { error } = await supabase
         .from('users')
-        .update({
-          geminiApiKey: apiKey.trim(),
-          countryCode: countryCode,
-          preferences: {
-            emailNotifications,
-            diseaseAlerts,
-            newsDigest,
-            weeklyReport,
-          },
-          lastLogin: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', user.id)
       
-      if (error) throw error
+      if (error) {
+        console.error("Supabase Save Error:", JSON.stringify(error))
+        throw error
+      }
 
       toast({
         title: "Settings Saved",
@@ -166,7 +175,7 @@ export default function SettingsPage() {
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: error?.message || "Could not update settings. Please check your connection.",
+        description: error?.message || error?.details || "Could not update settings. Check browser console for details.",
       })
     } finally {
       setIsSaving(false)

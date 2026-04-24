@@ -53,6 +53,8 @@ export default function LoginPage() {
   const [otp, setOtp] = React.useState("");
   const [verifyEmail, setVerifyEmail] = React.useState("");
   const [resendCooldown, setResendCooldown] = React.useState(0);
+  // Stores form data while waiting for OTP — so we can create the profile after verify
+  const [pendingProfile, setPendingProfile] = React.useState<any>(null);
 
   const [formData, setFormData] = React.useState({
     email: "",
@@ -218,6 +220,20 @@ export default function LoginPage() {
           setFormData((prev) => ({ ...prev, password: "" }));
           return;
         } else {
+          // Email confirm ON — save pending profile to create after OTP verify
+          const ageNum = calculateAge(formData.birthday);
+          const ageGroup = getAgeGroup(ageNum);
+          setPendingProfile({
+            email: formData.email,
+            displayName: formData.fullName,
+            phone: formData.phone,
+            birth_date: formData.birthday,
+            age: ageNum.toString(),
+            age_group: ageGroup,
+            easy_mode_enabled: ageNum >= 60,
+            countryCode: formData.countryCode,
+            language: "en-US",
+          });
           toast({
             title: "Registration Successful",
             description: "Please check your email to complete the sign up!",
@@ -297,6 +313,24 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data.session && data.user) {
+        // Create user profile in DB now that email is confirmed
+        if (pendingProfile) {
+          const { error: dbError } = await supabase.from("users").insert({
+            id: data.user.id,
+            ...pendingProfile,
+          });
+          if (dbError) {
+            console.error("Profile insert after OTP failed:", JSON.stringify(dbError));
+            toast({
+              variant: "destructive",
+              title: "Profile Setup Warning",
+              description: "Email verified but profile setup had an issue. Please re-register.",
+            });
+          } else {
+            setPendingProfile(null);
+          }
+        }
+
         toast({
           title: "Email Verified!",
           description: "Welcome to TUAI. Logging you in...",
