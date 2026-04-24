@@ -203,7 +203,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {/* collapsed mode */}
           <div className="hidden group-data-[collapsible=icon]:flex w-full justify-center">
             <span className="text-xs font-semibold tracking-[0.3em] text-sidebar-foreground/40">
-              ✎ ⌨ ✉
+              
             </span>
           </div>
         </SidebarHeader>
