@@ -2,10 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Leaf } from "lucide-react";
 
 export default function TUAIUltraClean() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const router = useRouter();
+
+  const handleRedirectToLogin = () => {
+    router.push("/login");
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -40,7 +46,10 @@ export default function TUAIUltraClean() {
             >
               Sign in
             </Link>
-            <button className="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs sm:text-sm font-medium rounded-full hover:shadow-lg hover:shadow-primary/20 transition flex-shrink-0">
+            <button 
+              onClick={handleRedirectToLogin}
+              className="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs sm:text-sm font-medium rounded-full hover:shadow-lg hover:shadow-primary/20 transition flex-shrink-0"
+            >
               Start
             </button>
           </div>
@@ -143,10 +152,16 @@ export default function TUAIUltraClean() {
 
                 {/* CTA Buttons - Simple */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <button className="px-6 sm:px-8 py-3 bg-card text-primary font-semibold rounded-full hover:bg-card/80 transition text-sm sm:text-base w-full sm:w-auto">
+                  <button 
+                    onClick={handleRedirectToLogin}
+                    className="px-6 sm:px-8 py-3 bg-card text-primary font-semibold rounded-full hover:bg-card/80 transition text-sm sm:text-base w-full sm:w-auto"
+                  >
                     Get started
                   </button>
-                  <button className="px-6 sm:px-8 py-3 border border-primary-foreground/30 text-primary-foreground font-medium rounded-full hover:bg-primary-foreground/10 transition text-sm sm:text-base w-full sm:w-auto">
+                  <button 
+                    onClick={handleRedirectToLogin}
+                    className="px-6 sm:px-8 py-3 border border-primary-foreground/30 text-primary-foreground font-medium rounded-full hover:bg-primary-foreground/10 transition text-sm sm:text-base w-full sm:w-auto"
+                  >
                     Learn more
                   </button>
                 </div>
@@ -457,6 +472,7 @@ export default function TUAIUltraClean() {
                     ))}
                   </ul>
                   <button
+                    onClick={handleRedirectToLogin}
                     className={`w-full py-3 rounded-full font-medium transition text-sm ${
                       plan.highlight
                         ? "bg-green-600 text-white hover:bg-green-700"
@@ -484,7 +500,10 @@ export default function TUAIUltraClean() {
               7 days free. No credit card. Support in 12 languages.
             </p>
 
-            <button className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-full hover:shadow-xl hover:shadow-green-600/30 transition">
+            <button 
+              onClick={handleRedirectToLogin}
+              className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-full hover:shadow-xl hover:shadow-green-600/30 transition"
+            >
               Get started free
             </button>
           </div>
