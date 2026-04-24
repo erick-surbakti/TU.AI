@@ -351,22 +351,18 @@ export default function RecordsPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <Button
-                          variant="outline"
-                          className="rounded-xl border-white/20 text-white hover:bg-white/10 font-bold text-xs h-12"
-                          onClick={() => {
-                            const tabTrigger = document.querySelector('[value="investors"]') as HTMLElement
-                            tabTrigger?.click()
-                          }}
+                          className="rounded-xl bg-white text-slate-900 hover:bg-slate-100 border-none font-bold text-xs h-12 px-6"
+                          onClick={() => window.open('https://tuai-form.vercel.app/', '_blank')}
                         >
                           Scout Investors
                         </Button>
                         <Button
                           className="rounded-xl bg-yellow-400 text-slate-900 hover:bg-yellow-300 font-black text-xs px-6 h-12 shadow-lg shadow-yellow-400/20"
                           onClick={() => {
-                            window.open(`https://wa.me/?text=Hi TUAI Investor Desk, I have completed my Farm Audit with an efficiency score of ${auditResult.efficiencyScore}%. I want to apply for investment for my ${auditForm.cropType} farm.`, "_blank")
+                            window.open(`https://wa.me/6285183149774?text=Hi TUAI Investor Desk, I have completed my Farm Audit with an efficiency score of ${auditResult.efficiencyScore}%. I want to apply for investment for my ${auditForm.cropType} farm.`, "_blank")
                           }}
                         >
-                          Verify via WhatsApp <Zap className="h-4 w-4 ml-2 fill-current" />
+                          Share via WhatsApp <Zap className="h-4 w-4 ml-2 fill-current" />
                         </Button>
                       </div>
                     </div>
