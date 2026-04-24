@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -83,6 +82,7 @@ export default function SuppliersPage() {
   React.useEffect(() => {
     getUserLocation()
   }, [getUserLocation])
+  
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!query.trim()) return
@@ -122,6 +122,20 @@ export default function SuppliersPage() {
       setIsSearching(false)
     }
   }
+
+  const handleOpenFullMap = React.useCallback(() => {
+    if (!location) {
+      toast({
+        variant: "destructive",
+        title: "Location Not Available",
+        description: "Please enable location access to open the map."
+      })
+      return
+    }
+    
+    const mapsUrl = `https://www.google.com/maps/search/agriculture+supplier+near+me/@${location.lat},${location.lng},13z`
+    window.open(mapsUrl, "_blank")
+  }, [location, toast])
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 md:pb-0">
@@ -274,7 +288,13 @@ export default function SuppliersPage() {
                    AI-powered scanning of regional inventory levels. Your detected location: 
                    <br/><span className="font-mono text-xs mt-2 opacity-100">{location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Detecting..."}</span>
                  </p>
-                 <Button onClick={() => window.open('https://tuai-form.vercel.app/', '_blank')} className="bg-white text-primary hover:bg-white/90 rounded-full font-bold px-10 h-14 shadow-2xl">Open Full Map</Button>
+                 <Button 
+                   onClick={handleOpenFullMap} 
+                   disabled={!location} 
+                   className="bg-white text-primary hover:bg-white/90 rounded-full font-bold px-10 h-14 shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   Open Full Map
+                 </Button>
               </div>
            </Card>
 
